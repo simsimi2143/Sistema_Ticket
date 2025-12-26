@@ -1,0 +1,108 @@
+from datetime import datetime
+from app import db, login_manager
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+
+class Rol(db.Model):
+    __tablename__ = 'roles'
+    
+    id_rol = db.Column(db.Integer, primary_key=True)
+    rol_name = db.Column(db.String(50), nullable=False, unique=True)
+    description = db.Column(db.Text)
+    status = db.Column(db.Boolean, default=True)
+    
+    # Permisos específicos
+    perm_tickets = db.Column(db.Integer, default=1)  # 0:no access, 1:read, 2:write
+    perm_users = db.Column(db.Integer, default=0)
+    perm_departments = db.Column(db.Integer, default=0)
+    perm_admin = db.Column(db.Integer, default=0)
+    
+    usuarios = db.relationship('Usuario', backref='rol', lazy=True)
+    
+    def __repr__(self):
+        return f'<Rol {self.rol_name}>'
+
+class Departamento(db.Model):
+    __tablename__ = 'departamentos'
+    
+    depth_id = db.Column(db.Integer, primary_key=True)
+    depth_name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    status = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(100))
+    
+    usuarios = db.relationship('Usuario', backref='departamento', lazy=True)
+    
+    def __repr__(self):
+        return f'<Departamento {self.depth_name}>'
+
+class Usuario(UserMixin, db.Model):
+    __tablename__ = 'usuarios'
+    
+    id_user = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    id_rol = db.Column(db.Integer, db.ForeignKey('roles.id_rol'), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256))
+    depth_id = db.Column(db.Integer, db.ForeignKey('departamentos.depth_id'))
+    status = db.Column(db.Boolean, default=True)
+    
+    tickets_creados = db.relationship('Ticket', foreign_keys='Ticket.id_user', backref='creador', lazy=True)
+    tickets_asignados = db.relationship('Ticket', foreign_keys='Ticket.user_asigned', backref='asignado_a', lazy=True)
+    
+    @property
+    def password(self):
+        raise AttributeError('password is not a readable attribute')
+    
+    @password.setter
+    def password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def get_id(self):
+        return self.id_user
+    
+    def __repr__(self):
+        return f'<Usuario {self.name}>'
+
+class Ticket(db.Model):
+    __tablename__ = 'tickets'
+    
+    ticket_id = db.Column(db.Integer, primary_key=True)
+    id_user = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    estado = db.Column(db.String(50), default='Abierto')  # Abierto, En Progreso, Cerrado, Resuelto
+    detalles_fallo = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_asigned = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(100))
+    
+    # Relaciones
+    comentarios = db.relationship('Comentario', backref='ticket', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Ticket {self.ticket_id}: {self.name}>'
+
+class Comentario(db.Model):
+    __tablename__ = 'comentarios'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.ticket_id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'), nullable=False)
+    contenido = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    usuario = db.relationship('Usuario', backref='comentarios')
+    
+    def __repr__(self):
+        return f'<Comentario {self.id}>'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))

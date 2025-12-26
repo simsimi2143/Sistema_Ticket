@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Roles - Sistema de Tickets{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-800">Gestión de Roles</h1>
+    <p class="text-gray-600">Administre los roles y permisos del sistema</p>
+</div>
+
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tickets</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuarios</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamentos</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Administración</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for rol in roles %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ rol.id_rol }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ rol.rol_name }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {{ rol.description|truncate(50) }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if rol.perm_tickets == 0 %}bg-red-100 text-red-800
+                            {% elif rol.perm_tickets == 1 %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ ['No Access', 'Read', 'Read/Write'][rol.perm_tickets] }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if rol.perm_users == 0 %}bg-red-100 text-red-800
+                            {% elif rol.perm_users == 1 %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ ['No Access', 'Read', 'Read/Write'][rol.perm_users] }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if rol.perm_departments == 0 %}bg-red-100 text-red-800
+                            {% elif rol.perm_departments == 1 %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ ['No Access', 'Read', 'Read/Write'][rol.perm_departments] }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {% if rol.perm_admin == 0 %}bg-red-100 text-red-800
+                            {% elif rol.perm_admin == 1 %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ ['No Access', 'Read', 'Read/Write'][rol.perm_admin] }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        {% if rol.status %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Activo
+                        </span>
+                        {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                            Inactivo
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {% if current_user.rol.perm_admin >= 2 %}
+                        <a href="{{ url_for('main.edit_role', role_id=rol.id_rol) }}" 
+                           class="text-blue-600 hover:text-blue-900 mr-3">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{{ url_for('main.toggle_role_status', role_id=rol.id_rol) }}" 
+                           class="text-red-600 hover:text-red-900"
+                           onclick="return confirm('¿Está seguro de cambiar el estado de este rol?')">
+                            <i class="fas fa-power-off"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="px-6 py-8 text-center text-gray-500">
+                        <i class="fas fa-user-shield text-4xl mb-4 text-gray-300"></i>
+                        <p class="text-lg">No se encontraron roles</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if current_user.rol.perm_admin >= 2 %}
+<div class="mt-8 bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Información sobre permisos</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="p-4 border rounded-lg">
+            <h3 class="font-bold text-gray-700 mb-2">Nivel 0: No Access</h3>
+            <p class="text-gray-600 text-sm">El usuario no puede ver ni acceder a esta sección.</p>
+        </div>
+        <div class="p-4 border rounded-lg">
+            <h3 class="font-bold text-gray-700 mb-2">Nivel 1: Read</h3>
+            <p class="text-gray-600 text-sm">El usuario puede ver la información pero no modificarla.</p>
+        </div>
+        <div class="p-4 border rounded-lg">
+            <h3 class="font-bold text-gray-700 mb-2">Nivel 2: Read/Write</h3>
+            <p class="text-gray-600 text-sm">El usuario puede ver y modificar la información.</p>
+        </div>
+        <div class="p-4 border rounded-lg">
+            <h3 class="font-bold text-gray-700 mb-2">Estado</h3>
+            <p class="text-gray-600 text-sm">Activo: El rol está disponible para asignar a usuarios.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
