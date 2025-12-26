@@ -210,6 +210,16 @@
             </div>
             {% endif %}
         </div>
+        <!-- Agregar esta sección después de la descripción -->
+        {% if ticket.has_image %}
+        <div class="mt-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-2">Imagen Adjunta</h3>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <img src="{{ ticket.image_url }}" alt="{{ ticket.name }}" 
+                     class="max-w-full h-auto rounded-lg shadow-sm">
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

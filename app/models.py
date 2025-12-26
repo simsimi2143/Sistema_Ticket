@@ -3,6 +3,7 @@ from app import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import pytz
+import os
 
 class Rol(db.Model):
     __tablename__ = 'roles'
@@ -84,6 +85,11 @@ class Ticket(db.Model):
     description = db.Column(db.Text, nullable=False)
     estado = db.Column(db.String(50), default='Abierto')  # Abierto, En Progreso, Cerrado, Resuelto
     detalles_fallo = db.Column(db.Text)
+    
+    # Nuevo campo para imagen
+    image_filename = db.Column(db.String(255), nullable=True)
+    image_path = db.Column(db.String(500), nullable=True)
+    
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Santiago')))
     user_asigned = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Santiago')), 
@@ -96,17 +102,61 @@ class Ticket(db.Model):
     def __repr__(self):
         return f'<Ticket {self.ticket_id}: {self.name}>'
     
-    # Propiedad para obtener la fecha local formateada
+    
+    
+    @property
+    def image_url(self):
+        if self.image_filename:
+            # Usar la ruta relativa almacenada o construirla
+            if self.image_path:
+                # Si es una ruta relativa, convertir a URL
+                if not self.image_path.startswith('http'):
+                    # Asegurar que comience con /
+                    if not self.image_path.startswith('/'):
+                        return f"/uploads/{self.image_path.split('uploads/')[-1] if 'uploads/' in self.image_path else self.image_path}"
+                    return self.image_path
+                return self.image_path
+            else:
+                # Para compatibilidad con versiones anteriores
+                return f"/uploads/{self.image_filename}"
+        return None
+    
+    @property
+    def physical_image_path(self):
+        if self.image_path:
+            # Si es una ruta relativa, hacerla absoluta
+            if not os.path.isabs(self.image_path):
+                from flask import current_app
+                upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+                if not os.path.isabs(upload_folder):
+                    upload_folder = os.path.join(current_app.root_path, upload_folder)
+                return os.path.join(upload_folder, os.path.basename(self.image_path))
+            return self.image_path
+        return None
+    # Propiedad para verificar si tiene imagen
+    @property
+    def has_image(self):
+        return bool(self.image_filename)
+    
+    # Método para eliminar la imagen física
+    def delete_image(self):
+        physical_path = self.physical_image_path
+        if physical_path and os.path.exists(physical_path):
+            try:
+                os.remove(physical_path)
+                print(f"DEBUG - Imagen eliminada: {physical_path}")
+            except Exception as e:
+               print(f"DEBUG - Error al eliminar imagen: {e}")
+    
     @property
     def created_at_local(self):
         if self.created_at:
-            # Si ya tiene zona horaria, convertir a Perú
             if self.created_at.tzinfo:
                 return self.created_at.astimezone(pytz.timezone('America/Santiago'))
-            # Si no tiene, asumir UTC y convertir
             utc_naive = self.created_at.replace(tzinfo=pytz.utc)
             return utc_naive.astimezone(pytz.timezone('America/Santiago'))
         return None
+    
     @property
     def updated_at_local(self):
         if self.updated_at:

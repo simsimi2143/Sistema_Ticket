@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request, jsonify, Blueprint
+from flask import render_template, redirect, url_for, flash, request, jsonify, Blueprint, current_app
 from flask_login import login_required, current_user
 from app import db
 from app.models import Usuario, Ticket, Departamento, Rol, Comentario
@@ -7,10 +7,86 @@ from app.decorators import permission_required, admin_required
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Optional
 from app.forms import RoleForm
 from datetime import datetime
+import os
+from werkzeug.utils import secure_filename
 
 # Crear el Blueprint aquí
 bp = Blueprint('main', __name__)
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
+
+def save_uploaded_file(file):
+    if not file or file.filename == '':
+        print("DEBUG - No hay archivo para guardar o nombre vacío")
+        return None, None
+        
+    if not allowed_file(file.filename):
+        print(f"DEBUG - Archivo no permitido: {file.filename}")
+        flash('Formato de archivo no permitido. Solo se permiten imágenes (JPG, JPEG, PNG, GIF)', 'danger')
+        return None, None
+    
+    # Obtener extensión del archivo
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    
+    # Crear un nombre único para el archivo
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    import uuid
+    unique_id = str(uuid.uuid4())[:8]
+    
+    # Nombre base sin espacios ni caracteres especiales
+    from werkzeug.utils import secure_filename
+    base_name = secure_filename(os.path.splitext(file.filename)[0])
+    base_name = base_name.replace(' ', '_')[:50]  # Limitar longitud
+    
+    # Crear nombre final
+    filename = f"{timestamp}_{unique_id}_{base_name}{file_ext}"
+    
+    # Asegurar que la carpeta de uploads exista
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+    
+    # Si la ruta es relativa, hacerla absoluta
+    if not os.path.isabs(upload_folder):
+        upload_folder = os.path.join(current_app.root_path, upload_folder)
+    
+    # Crear directorio si no existe
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    file_path = os.path.join(upload_folder, filename)
+    
+    try:
+        # Guardar el archivo
+        file.save(file_path)
+        
+        # Verificar que se guardó correctamente
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            print(f"DEBUG - Archivo guardado exitosamente: {filename} ({os.path.getsize(file_path)} bytes)")
+            print(f"DEBUG - Ruta guardada: {file_path}")
+            
+            # Guardar ruta relativa para la base de datos
+            relative_path = os.path.join('uploads', filename)
+            return filename, relative_path
+        else:
+            print(f"DEBUG - ERROR: Archivo no se guardó o está vacío")
+            flash('Error al guardar la imagen', 'danger')
+            return None, None
+            
+    except Exception as e:
+        print(f"DEBUG - ERROR al guardar archivo: {e}")
+        flash(f'Error al guardar la imagen: {str(e)}', 'danger')
+        return None, None
+
+@bp.route('/uploads/<filename>')
+def uploaded_file(filename):
+    from flask import send_from_directory, abort
+    try:
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        return send_from_directory(upload_folder, filename)
+    except FileNotFoundError:
+        abort(404)
+        
+        
 @bp.route('/')
 @bp.route('/dashboard')
 @login_required
@@ -88,6 +164,13 @@ def create_ticket():
         form.user_asigned.choices = [(0, 'Sin asignar')]
     
     if form.validate_on_submit():
+        # Manejar la subida de imagen
+        image_filename = None
+        image_path = None
+        
+        if form.image.data:
+            image_filename, image_path = save_uploaded_file(form.image.data)
+        
         ticket = Ticket(
             name=form.name.data,
             description=form.description.data,
@@ -95,7 +178,9 @@ def create_ticket():
             estado='Abierto',
             id_user=current_user.id_user,
             user_asigned=form.user_asigned.data if form.user_asigned.data != 0 else None,
-            created_by=current_user.name
+            created_by=current_user.name,
+            image_filename=image_filename,
+            image_path=image_path
         )
         
         db.session.add(ticket)
@@ -150,6 +235,17 @@ def edit_ticket(ticket_id):
     form.user_asigned.choices = [(0, 'Sin asignar')] + [(u.id_user, u.name) for u in usuarios]
     
     if form.validate_on_submit():
+        # Manejar la subida de nueva imagen
+        if form.image.data:
+            # Eliminar imagen anterior si existe
+            if ticket.image_filename:
+                ticket.delete_image()
+            
+            # Guardar nueva imagen
+            image_filename, image_path = save_uploaded_file(form.image.data)
+            ticket.image_filename = image_filename
+            ticket.image_path = image_path
+        
         ticket.name = form.name.data
         ticket.description = form.description.data
         ticket.detalles_fallo = form.detalles_fallo.data
@@ -162,6 +258,22 @@ def edit_ticket(ticket_id):
         return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
     
     return render_template('tickets/edit.html', form=form, ticket=ticket)
+
+# Agregar ruta para eliminar imagen de ticket
+@bp.route('/tickets/<int:ticket_id>/delete_image', methods=['POST'])
+@login_required
+@permission_required('tickets', 2)
+def delete_ticket_image(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+    
+    if ticket.image_filename:
+        ticket.delete_image()
+        ticket.image_filename = None
+        ticket.image_path = None
+        db.session.commit()
+        flash('Imagen eliminada exitosamente', 'success')
+    
+    return redirect(url_for('main.edit_ticket', ticket_id=ticket.ticket_id))
 
 @bp.route('/admin/users')
 @login_required

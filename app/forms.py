@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SelectField, BooleanField, SubmitField, IntegerField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError, Optional
 from app.models import Usuario, Rol, Departamento
+from flask_wtf.file import FileField, FileAllowed, FileSize
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -26,6 +27,13 @@ class TicketForm(FlaskForm):
     name = StringField('Título del Ticket', validators=[DataRequired(), Length(min=5, max=200)])
     description = TextAreaField('Descripción', validators=[DataRequired()])
     detalles_fallo = TextAreaField('Detalles del Fallo (opcional)')
+    
+    # Campo para imagen con validación de tamaño
+    image = FileField('Imagen Adjunta', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'gif'], 'Solo se permiten imágenes (JPG, JPEG, PNG, GIF)!'),
+        FileSize(max_size=5 * 1024 * 1024, message='La imagen no debe exceder los 5MB')
+    ])
+    
     estado = SelectField('Estado', choices=[
         ('Abierto', 'Abierto'),
         ('En Progreso', 'En Progreso'),

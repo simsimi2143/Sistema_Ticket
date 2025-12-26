@@ -10,7 +10,6 @@
 
 <!-- Stats Cards -->
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-    <!-- Total Tickets -->
     <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-300">
         <div class="flex items-center">
             <div class="bg-blue-100 p-3 rounded-full">
@@ -23,7 +22,6 @@
         </div>
     </div>
     
-    <!-- Tickets Abiertos -->
     <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-300">
         <div class="flex items-center">
             <div class="bg-yellow-100 p-3 rounded-full">
@@ -36,7 +34,6 @@
         </div>
     </div>
     
-    <!-- En Progreso -->
     <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-300">
         <div class="flex items-center">
             <div class="bg-green-100 p-3 rounded-full">
@@ -49,7 +46,6 @@
         </div>
     </div>
     
-    <!-- Mis Tickets -->
     <div class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow duration-300">
         <div class="flex items-center">
             <div class="bg-purple-100 p-3 rounded-full">
@@ -81,7 +77,7 @@
 </div>
 {% endif %}
 
-<!-- Recent Tickets -->
+<!-- Tickets Recientes como Cards -->
 {% if current_user.rol and current_user.rol.perm_tickets >= 1 %}
 <div class="bg-white rounded-lg shadow">
     <div class="p-6 border-b">
@@ -93,62 +89,71 @@
         </div>
     </div>
     
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creado</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for ticket in recent_tickets %}
-                <tr class="hover:bg-gray-50 transition-colors duration-200">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{{ ticket.ticket_id }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">{{ ticket.name|truncate(40) }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+    <div class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for ticket in recent_tickets %}
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+                <!-- Imagen del Ticket -->
+                {% if ticket.has_image %}
+                <div class="h-48 overflow-hidden">
+                    <img src="{{ ticket.image_url }}" alt="{{ ticket.name }}" 
+                         class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+                {% else %}
+                <div class="h-48 bg-gradient-to-r from-blue-50 to-gray-100 flex items-center justify-center">
+                    <i class="fas fa-ticket-alt text-gray-400 text-5xl"></i>
+                </div>
+                {% endif %}
+                
+                <!-- Contenido del Card -->
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-gray-800 truncate">{{ ticket.name|truncate(30) }}</h3>
+                        <span class="px-2 py-1 rounded-full text-xs font-semibold 
                             {% if ticket.estado == 'Abierto' %}bg-yellow-100 text-yellow-800
                             {% elif ticket.estado == 'En Progreso' %}bg-blue-100 text-blue-800
                             {% elif ticket.estado == 'Resuelto' %}bg-green-100 text-green-800
                             {% else %}bg-gray-100 text-gray-800{% endif %}">
                             {{ ticket.estado }}
                         </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{ ticket.created_at.strftime('%d/%m/%Y') }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <a href="{{ url_for('main.ticket_detail', ticket_id=ticket.ticket_id) }}" 
-                           class="text-blue-600 hover:text-blue-900 inline-flex items-center">
-                            <i class="fas fa-eye mr-1"></i> Ver
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" class="px-6 py-8 text-center">
-                        <div class="text-gray-400 mb-4">
-                            <i class="fas fa-ticket-alt text-5xl"></i>
+                    </div>
+                    
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{ ticket.description|truncate(100) }}</p>
+                    
+                    <div class="flex justify-between items-center text-sm text-gray-500 mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-user-circle mr-1"></i>
+                            <span>{{ ticket.creador.name|truncate(15) }}</span>
                         </div>
-                        <p class="text-gray-500 mb-2">No hay tickets recientes</p>
-                        {% if current_user.rol and current_user.rol.perm_tickets >= 2 %}
-                        <a href="{{ url_for('main.create_ticket') }}" class="text-blue-600 hover:text-blue-800 font-medium">
-                            Crear un nuevo ticket
+                        <div class="flex items-center">
+                            <i class="far fa-calendar mr-1"></i>
+                            <span>{{ ticket.created_at.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-medium text-blue-600">#{{ ticket.ticket_id }}</span>
+                        <a href="{{ url_for('main.ticket_detail', ticket_id=ticket.ticket_id) }}" 
+                           class="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center">
+                            Ver detalles <i class="fas fa-arrow-right ml-1"></i>
                         </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="col-span-3 text-center py-12">
+                <div class="text-gray-400 mb-4">
+                    <i class="fas fa-ticket-alt text-5xl"></i>
+                </div>
+                <p class="text-gray-500 mb-2">No hay tickets recientes</p>
+                {% if current_user.rol and current_user.rol.perm_tickets >= 2 %}
+                <a href="{{ url_for('main.create_ticket') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                    Crear un nuevo ticket
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endif %}
@@ -160,7 +165,7 @@
     font-weight: 900;
 }
 
-/* Animaciones para los iconos */
+/* Animaciones */
 .fa-spinner {
     animation: spin 2s linear infinite;
 }
@@ -168,6 +173,23 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Estilo para limitar líneas de texto */
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Estilo para hover de cards */
+.hover\:scale-105:hover {
+    transform: scale(1.05);
+}
+
+.transition-transform {
+    transition-property: transform;
 }
 </style>
 {% endblock %}

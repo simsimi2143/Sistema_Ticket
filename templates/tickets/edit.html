@@ -2,6 +2,30 @@
 
 {% block title %}Editar Ticket #{{ ticket.ticket_id }} - Sistema de Tickets{% endblock %}
 
+{% block extra_css %}
+<style>
+    .image-preview-container {
+        margin-top: 1rem;
+    }
+    .image-preview {
+        max-width: 300px;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 2px solid #d1d5db;
+        padding: 8px;
+    }
+    .current-image {
+        max-width: 300px;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 2px solid #d1d5db;
+        padding: 8px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
@@ -10,8 +34,9 @@
     </div>
     
     <div class="bg-white rounded-lg shadow p-6">
-        <form method="POST" action="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}">
+        <form method="POST" action="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}" enctype="multipart/form-data" id="edit-form">
             {{ form.hidden_tag() }}
+            {{ form.csrf_token }}
             
             <div class="mb-6">
                 <label for="name" class="block text-gray-700 text-sm font-bold mb-2">
@@ -35,6 +60,58 @@
                         <p class="text-red-500 text-xs mt-1">{{ error }}</p>
                     {% endfor %}
                 {% endif %}
+            </div>
+            
+            <!-- IMAGEN ACTUAL Y NUEVA IMAGEN -->
+            <div class="mb-6">
+                <label for="image" class="block text-gray-700 text-sm font-bold mb-2">
+                    Imagen Adjunta
+                </label>
+                
+                <!-- Imagen actual -->
+                {% if ticket.has_image %}
+                <div class="mb-4">
+                    <p class="text-gray-600 text-sm mb-2">Imagen actual:</p>
+                    <div class="relative inline-block">
+                        <img src="{{ ticket.image_url }}" alt="Imagen actual del ticket" 
+                             class="current-image" id="current-image-preview">
+                        <div class="mt-2">
+                            <a href="{{ ticket.image_url }}" target="_blank" 
+                               class="text-blue-600 hover:text-blue-800 text-sm font-medium mr-4">
+                                <i class="fas fa-external-link-alt mr-1"></i> Ver original
+                            </a>
+                            <button type="button" onclick="confirmDeleteImage()" 
+                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
+                                <i class="fas fa-trash-alt mr-1"></i> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mb-4">
+                    <p class="text-gray-600 text-sm mb-2">No hay imagen adjunta</p>
+                </div>
+                {% endif %}
+                
+                <!-- Campo para nueva imagen -->
+                <p class="text-gray-600 text-sm mb-2">Seleccionar nueva imagen (opcional):</p>
+                {{ form.image(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500", id="new-image-input", accept=".jpg,.jpeg,.png,.gif") }}
+                
+                <!-- Previsualización de nueva imagen -->
+                <div id="new-image-preview-container" class="image-preview-container" style="display: none;">
+                    <p class="text-gray-600 text-sm mb-2">Vista previa de la nueva imagen:</p>
+                    <img id="new-image-preview" class="image-preview" alt="Vista previa de la nueva imagen">
+                    <button type="button" id="remove-new-image" class="mt-2 text-red-600 hover:text-red-800 text-sm font-medium">
+                        <i class="fas fa-times mr-1"></i> Cancelar cambio
+                    </button>
+                </div>
+                
+                {% if form.image.errors %}
+                    {% for error in form.image.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+                <p class="text-gray-500 text-xs mt-1">Deje en blanco para mantener la imagen actual. Formatos: JPG, JPEG, PNG, GIF</p>
             </div>
             
             <div class="mb-6">
@@ -65,9 +142,86 @@
                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded">
                     Cancelar
                 </a>
-                {{ form.submit(class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded") }}
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">
+                    <i class="fas fa-save mr-2"></i> Guardar Cambios
+                </button>
             </div>
+        </form>
+        
+        <!-- Formulario oculto para eliminar imagen -->
+        <form method="POST" action="{{ url_for('main.delete_ticket_image', ticket_id=ticket.ticket_id) }}" 
+              id="delete-image-form" style="display: none;">
+            {{ form.hidden_tag() }}
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const newImageInput = document.getElementById('new-image-input');
+    const newPreviewContainer = document.getElementById('new-image-preview-container');
+    const newPreviewImage = document.getElementById('new-image-preview');
+    const removeNewImageButton = document.getElementById('remove-new-image');
+    const currentImagePreview = document.getElementById('current-image-preview');
+    
+    // Previsualización de nueva imagen
+    newImageInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                newPreviewImage.src = e.target.result;
+                newPreviewContainer.style.display = 'block';
+                
+                // Ocultar imagen actual si existe
+                if (currentImagePreview) {
+                    currentImagePreview.style.opacity = '0.5';
+                }
+            }
+            
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Cancelar cambio de imagen
+    removeNewImageButton.addEventListener('click', function() {
+        newImageInput.value = '';
+        newPreviewContainer.style.display = 'none';
+        newPreviewImage.src = '';
+        
+        // Restaurar visibilidad de imagen actual
+        if (currentImagePreview) {
+            currentImagePreview.style.opacity = '1';
+        }
+    });
+    
+    // Validación del formulario
+    document.getElementById('edit-form').addEventListener('submit', function(e) {
+        const file = newImageInput.files[0];
+        if (file) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if (!allowedTypes.includes(file.type)) {
+                e.preventDefault();
+                alert('Formato de archivo no permitido. Solo se permiten JPG, JPEG, PNG y GIF.');
+                return;
+            }
+            
+            if (file.size > maxSize) {
+                e.preventDefault();
+                alert('El archivo es demasiado grande. El tamaño máximo es 5MB.');
+                return;
+            }
+        }
+    });
+});
+
+function confirmDeleteImage() {
+    if (confirm('¿Está seguro de que desea eliminar la imagen de este ticket?\n\nEsta acción no se puede deshacer.')) {
+        document.getElementById('delete-image-form').submit();
+    }
+}
+</script>
 {% endblock %}

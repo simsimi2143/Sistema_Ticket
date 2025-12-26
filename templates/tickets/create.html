@@ -2,6 +2,23 @@
 
 {% block title %}Nuevo Ticket - Sistema de Tickets{% endblock %}
 
+{% block extra_css %}
+<style>
+    .image-preview-container {
+        display: none;
+        margin-top: 1rem;
+    }
+    .image-preview {
+        max-width: 300px;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 2px dashed #d1d5db;
+        padding: 8px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
@@ -10,7 +27,7 @@
     </div>
     
     <div class="bg-white rounded-lg shadow p-6">
-        <form method="POST" action="{{ url_for('main.create_ticket') }}">
+        <form method="POST" action="{{ url_for('main.create_ticket') }}" enctype="multipart/form-data" id="ticket-form">
             {{ form.hidden_tag() }}
             {{ form.csrf_token }}
             
@@ -38,6 +55,30 @@
                 {% endif %}
             </div>
             
+            <!-- CAMPO PARA IMAGEN CON PREVIEW -->
+            <div class="mb-6">
+                <label for="image" class="block text-gray-700 text-sm font-bold mb-2">
+                    Imagen Adjunta (opcional)
+                </label>
+                {{ form.image(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500", id="image-input", accept=".jpg,.jpeg,.png,.gif") }}
+                
+                <!-- Previsualización de imagen -->
+                <div id="image-preview-container" class="image-preview-container">
+                    <p class="text-gray-600 text-sm mb-2">Vista previa:</p>
+                    <img id="image-preview" class="image-preview" alt="Vista previa de la imagen">
+                    <button type="button" id="remove-image" class="mt-2 text-red-600 hover:text-red-800 text-sm font-medium">
+                        <i class="fas fa-times mr-1"></i> Eliminar imagen
+                    </button>
+                </div>
+                
+                {% if form.image.errors %}
+                    {% for error in form.image.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
+                    {% endfor %}
+                {% endif %}
+                <p class="text-gray-500 text-xs mt-1">Formatos permitidos: JPG, JPEG, PNG, GIF. Tamaño máximo: 5MB</p>
+            </div>
+            
             <div class="mb-6">
                 <label for="detalles_fallo" class="block text-gray-700 text-sm font-bold mb-2">
                     Detalles del Fallo (opcional)
@@ -46,10 +87,8 @@
                 <p class="text-gray-500 text-xs mt-1">Proporcione detalles técnicos, pasos para reproducir el error, mensajes de error, etc.</p>
             </div>
             
-            <!-- Campo estado no debe mostrarse en creación, siempre será "Abierto" -->
             <input type="hidden" name="estado" value="Abierto">
             
-            <!-- Campo user_asigned solo si tiene permisos -->
             {% if current_user.rol.perm_tickets >= 2 %}
             <div class="mb-6">
                 <label for="user_asigned" class="block text-gray-700 text-sm font-bold mb-2">
@@ -81,38 +120,52 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
+    const imageInput = document.getElementById('image-input');
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImage = document.getElementById('image-preview');
+    const removeButton = document.getElementById('remove-image');
     
-    form.addEventListener('submit', function(e) {
-        // Validación básica del formulario
-        const title = document.querySelector('#name');
-        const description = document.querySelector('#description');
-        
-        if (!title.value.trim()) {
-            e.preventDefault();
-            alert('Por favor ingrese un título para el ticket');
-            title.focus();
-            return false;
+    // Previsualización de imagen
+    imageInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+            }
+            
+            reader.readAsDataURL(file);
         }
-        
-        if (!description.value.trim()) {
-            e.preventDefault();
-            alert('Por favor ingrese una descripción para el ticket');
-            description.focus();
-            return false;
+    });
+    
+    // Eliminar imagen
+    removeButton.addEventListener('click', function() {
+        imageInput.value = '';
+        previewContainer.style.display = 'none';
+        previewImage.src = '';
+    });
+    
+    // Validación del formulario
+    document.getElementById('ticket-form').addEventListener('submit', function(e) {
+        const file = imageInput.files[0];
+        if (file) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            
+            if (!allowedTypes.includes(file.type)) {
+                e.preventDefault();
+                alert('Formato de archivo no permitido. Solo se permiten JPG, JPEG, PNG y GIF.');
+                return;
+            }
+            
+            if (file.size > maxSize) {
+                e.preventDefault();
+                alert('El archivo es demasiado grande. El tamaño máximo es 5MB.');
+                return;
+            }
         }
-        
-        // Mostrar indicador de carga
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...';
-        submitBtn.disabled = true;
-        
-        // Rehabilitar el botón después de 5 segundos por si hay error
-        setTimeout(() => {
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }, 5000);
     });
 });
 </script>
