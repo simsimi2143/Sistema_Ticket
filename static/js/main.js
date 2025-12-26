@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Auto-ocultar mensajes flash después de 5 segundos
+    /* Auto-ocultar mensajes flash después de 5 segundos
     const flashMessages = document.querySelectorAll('.bg-blue-100, .bg-green-100, .bg-red-100, .bg-yellow-100');
     flashMessages.forEach(message => {
         setTimeout(() => {
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }, 500);
         }, 5000);
-    });
+    });*/
     
     // Funcionalidad para agregar comentarios
     const commentForm = document.getElementById('comment-form');

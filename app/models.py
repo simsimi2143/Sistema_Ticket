@@ -2,6 +2,7 @@ from datetime import datetime
 from app import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+import pytz
 
 class Rol(db.Model):
     __tablename__ = 'roles'
@@ -72,15 +73,21 @@ class Usuario(UserMixin, db.Model):
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     
+    def get_local_time():
+        from flask import current_app
+        tz = pytz.timezone(current_app.config.get('TIMEZONE', 'UTC'))
+        return datetime.now(tz)
+
     ticket_id = db.Column(db.Integer, primary_key=True)
     id_user = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     estado = db.Column(db.String(50), default='Abierto')  # Abierto, En Progreso, Cerrado, Resuelto
     detalles_fallo = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Santiago')))
     user_asigned = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Santiago')), 
+                          onupdate=lambda: datetime.now(pytz.timezone('America/Santiago')))
     created_by = db.Column(db.String(100))
     
     # Relaciones
@@ -88,6 +95,26 @@ class Ticket(db.Model):
     
     def __repr__(self):
         return f'<Ticket {self.ticket_id}: {self.name}>'
+    
+    # Propiedad para obtener la fecha local formateada
+    @property
+    def created_at_local(self):
+        if self.created_at:
+            # Si ya tiene zona horaria, convertir a Perú
+            if self.created_at.tzinfo:
+                return self.created_at.astimezone(pytz.timezone('America/Santiago'))
+            # Si no tiene, asumir UTC y convertir
+            utc_naive = self.created_at.replace(tzinfo=pytz.utc)
+            return utc_naive.astimezone(pytz.timezone('America/Santiago'))
+        return None
+    @property
+    def updated_at_local(self):
+        if self.updated_at:
+            if self.updated_at.tzinfo:
+                return self.updated_at.astimezone(pytz.timezone('America/Santiago'))
+            utc_naive = self.updated_at.replace(tzinfo=pytz.utc)
+            return utc_naive.astimezone(pytz.timezone('America/Santiago'))
+        return None
 
 class Comentario(db.Model):
     __tablename__ = 'comentarios'

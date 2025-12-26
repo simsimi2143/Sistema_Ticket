@@ -14,3 +14,7 @@ class Config:
         1: 'Read',
         2: 'Read/Write'
     }
+
+     # Configuración de zona horaria
+    TIMEZONE = 'America/Santiago'  # O tu zona horaria
+    # O para Chile continental:

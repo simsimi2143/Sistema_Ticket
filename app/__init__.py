@@ -1,9 +1,11 @@
-from flask import Flask
+from datetime import datetime
+from flask import Flask, app
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from config import Config
 import os
+import pytz
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -27,7 +29,11 @@ def create_app(config_class=Config):
     
     from app.routes import bp as main_bp
     app.register_blueprint(main_bp)
+
+    app.timezone=pytz.timezone(app.config['TIMEZONE'])
     
-    
-    
+    @app.context_processor
+    def inject_now():
+        return {'chile_now': datetime.now(app.timezone)}
+
     return app
