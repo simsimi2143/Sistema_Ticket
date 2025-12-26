@@ -19,31 +19,30 @@ def allowed_file(filename):
 
 def save_uploaded_file(file):
     if not file or file.filename == '':
-        print("DEBUG - No hay archivo para guardar o nombre vacío")
-        return None, None
+        print("DEBUG - No hay archivo para guardar")
+        return None
         
     if not allowed_file(file.filename):
         print(f"DEBUG - Archivo no permitido: {file.filename}")
         flash('Formato de archivo no permitido. Solo se permiten imágenes (JPG, JPEG, PNG, GIF)', 'danger')
-        return None, None
+        return None
     
     # Obtener extensión del archivo
     file_ext = os.path.splitext(file.filename)[1].lower()
     
     # Crear un nombre único para el archivo
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    from datetime import datetime
     import uuid
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     unique_id = str(uuid.uuid4())[:8]
     
     # Nombre base sin espacios ni caracteres especiales
-    from werkzeug.utils import secure_filename
     base_name = secure_filename(os.path.splitext(file.filename)[0])
     base_name = base_name.replace(' ', '_')[:50]  # Limitar longitud
     
     # Crear nombre final
     filename = f"{timestamp}_{unique_id}_{base_name}{file_ext}"
     
-    # Asegurar que la carpeta de uploads exista
     upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
     
     # Si la ruta es relativa, hacerla absoluta
@@ -61,21 +60,17 @@ def save_uploaded_file(file):
         
         # Verificar que se guardó correctamente
         if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-            print(f"DEBUG - Archivo guardado exitosamente: {filename} ({os.path.getsize(file_path)} bytes)")
-            print(f"DEBUG - Ruta guardada: {file_path}")
-            
-            # Guardar ruta relativa para la base de datos
-            relative_path = os.path.join('uploads', filename)
-            return filename, relative_path
+            print(f"DEBUG - Archivo guardado exitosamente: {filename}")
+            return filename
         else:
             print(f"DEBUG - ERROR: Archivo no se guardó o está vacío")
             flash('Error al guardar la imagen', 'danger')
-            return None, None
+            return None
             
     except Exception as e:
         print(f"DEBUG - ERROR al guardar archivo: {e}")
         flash(f'Error al guardar la imagen: {str(e)}', 'danger')
-        return None, None
+        return None
 
 @bp.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -239,13 +234,17 @@ def edit_ticket(ticket_id):
         if form.image.data:
             # Eliminar imagen anterior si existe
             if ticket.image_filename:
-                ticket.delete_image()
+                ticket.delete_image()  # Esto ahora debería funcionar
+                ticket.image_filename = None
+                ticket.image_path = None
             
             # Guardar nueva imagen
-            image_filename, image_path = save_uploaded_file(form.image.data)
-            ticket.image_filename = image_filename
-            ticket.image_path = image_path
+            image_filename = save_uploaded_file(form.image.data)
+            if image_filename:
+                ticket.image_filename = image_filename
+                ticket.image_path = f"uploads/{image_filename}"
         
+        # Actualizar otros campos
         ticket.name = form.name.data
         ticket.description = form.description.data
         ticket.detalles_fallo = form.detalles_fallo.data
@@ -267,11 +266,14 @@ def delete_ticket_image(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     
     if ticket.image_filename:
+        # Usar el método delete_image que ahora existe
         ticket.delete_image()
         ticket.image_filename = None
         ticket.image_path = None
         db.session.commit()
         flash('Imagen eliminada exitosamente', 'success')
+    else:
+        flash('No hay imagen para eliminar', 'warning')
     
     return redirect(url_for('main.edit_ticket', ticket_id=ticket.ticket_id))
 
