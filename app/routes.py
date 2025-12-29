@@ -9,6 +9,7 @@ from app.forms import RoleForm
 from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import abort
 
 # Crear el Blueprint aquí
 bp = Blueprint('main', __name__)
@@ -230,26 +231,48 @@ def update_ticket_status(ticket_id):
 
 @bp.route('/tickets/<int:ticket_id>/edit', methods=['GET', 'POST'])
 @login_required
-@permission_required('tickets', 2)
+@permission_required('tickets', 1) # Ajustado a 1 para permitir al creador
 def edit_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
+    
+    # --- LÓGICA DE PERMISOS ---
+    # Verificar si es el creador del ticket
+    is_creator = ticket.id_user == current_user.id_user
+    
+    # Verificar nivel de permiso (Soporte/Admin = 2, Usuario Básico = 1)
+    perm_level = current_user.rol.perm_tickets if current_user.rol else 0
+    
+    # Permitir si es Administrador/Soporte (puede editar todos)
+    # O si es el creador y tiene al menos permiso nivel 1
+    if not (perm_level >= 2 or (is_creator and perm_level >= 1)):
+        abort(403) # Forbidden
+    # ---------------------------
+
     form = TicketForm(obj=ticket)
     
-    # Obtener usuarios para asignación
-    usuarios = Usuario.query.filter_by(status=True).all()
-    form.user_asigned.choices = [(0, 'Sin asignar')] + [(u.id_user, u.name) for u in usuarios]
+    # Obtener usuarios para asignación (solo si tiene permiso nivel 2)
+    if perm_level >= 2:
+        usuarios = Usuario.query.filter_by(status=True).all()
+        form.user_asigned.choices = [(0, 'Sin asignar')] + [(u.id_user, u.name) for u in usuarios]
+        # Mostrar campo de estado para admins/soporte
+        form.estado.render_kw = {}
+    else:
+        # Para usuarios normales, no mostrar campo de asignación ni estado
+        form.user_asigned.choices = [(0, 'No disponible')]
+        form.user_asigned.render_kw = {'disabled': 'disabled'}
+        form.estado.render_kw = {'disabled': 'disabled'}
     
     if form.validate_on_submit():
         # Manejar la subida de nueva imagen
         if form.image.data:
             # Eliminar imagen anterior si existe
             if ticket.image_filename:
-                ticket.delete_image()  # Esto ahora debería funcionar
+                ticket.delete_image()
                 ticket.image_filename = None
                 ticket.image_path = None
             
             # Guardar nueva imagen
-            image_filename = save_uploaded_file(form.image.data)
+            image_filename, _ = save_uploaded_file(form.image.data)
             if image_filename:
                 ticket.image_filename = image_filename
                 ticket.image_path = f"uploads/{image_filename}"
@@ -258,8 +281,12 @@ def edit_ticket(ticket_id):
         ticket.name = form.name.data
         ticket.description = form.description.data
         ticket.detalles_fallo = form.detalles_fallo.data
-        ticket.estado = form.estado.data
-        ticket.user_asigned = form.user_asigned.data if form.user_asigned.data != 0 else None
+        
+        # Solo los admins (Nivel 2+) pueden cambiar el estado y asignación
+        if perm_level >= 2:
+            ticket.estado = form.estado.data
+            ticket.user_asigned = form.user_asigned.data if form.user_asigned.data != 0 else None
+        
         ticket.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -268,15 +295,23 @@ def edit_ticket(ticket_id):
     
     return render_template('tickets/edit.html', form=form, ticket=ticket)
 
-# Agregar ruta para eliminar imagen de ticket
+
 @bp.route('/tickets/<int:ticket_id>/delete_image', methods=['POST'])
 @login_required
-@permission_required('tickets', 2)
+@permission_required('tickets', 1) # Ajustado a 1 para permitir al creador
 def delete_ticket_image(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     
+    # --- LÓGICA DE PERMISOS ---
+    is_creator = ticket.id_user == current_user.id_user
+    perm_level = current_user.rol.perm_tickets if current_user.rol else 0
+    
+    # Solo borrar si eres admin o el creador
+    if not (perm_level >= 2 or (is_creator and perm_level >= 1)):
+        abort(403)
+    # ---------------------------
+    
     if ticket.image_filename:
-        # Usar el método delete_image que ahora existe
         ticket.delete_image()
         ticket.image_filename = None
         ticket.image_path = None
@@ -317,6 +352,16 @@ def add_comment(ticket_id):
     
     if not data or not data.get('content'):
         return jsonify({'error': 'Contenido requerido'}), 400
+    
+    # --- LÓGICA DE SEGURIDAD ---
+    # Verificar si es el creador
+    is_creator = ticket.id_user == current_user.id_user
+    perm_level = current_user.rol.perm_tickets if current_user.rol else 0
+    
+    # Solo Admin (Nivel 2+) o el Creador del ticket pueden comentar
+    if not (perm_level >= 2 or is_creator):
+        return jsonify({'error': 'No tienes permisos para comentar en este ticket.'}), 403
+    # ---------------------------
     
     comentario = Comentario(
         ticket_id=ticket_id,

@@ -53,7 +53,10 @@
             </div>
             
             <div class="flex space-x-3">
-                {% if current_user.rol.perm_tickets >= 2 %}
+                <!-- Botón de edición solo visible para:
+                     - Admin/Soporte (perm_tickets >= 2) 
+                     - O el creador del ticket (ticket.id_user == current_user.id_user) -->
+                {% if current_user.rol.perm_tickets >= 2 or ticket.id_user == current_user.id_user %}
                 <a href="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}" 
                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
                     <i class="fas fa-edit mr-2"></i> Editar
@@ -120,7 +123,10 @@
                 </div>
                 
                 <!-- Formulario para nuevo comentario -->
-                {% if current_user.rol.perm_tickets >= 1 %}
+                <!-- Solo visible para:
+                     - Admin/Soporte (perm_tickets >= 2) 
+                     - O el creador del ticket (ticket.id_user == current_user.id_user) -->
+                {% if current_user.rol.perm_tickets >= 2 or ticket.id_user == current_user.id_user %}
                 <div>
                     <h3 class="text-lg font-bold text-gray-800 mb-2">Agregar Comentario</h3>
                     <form id="comment-form">
@@ -191,7 +197,8 @@
             </div>
             
             <!-- Acciones Rápidas -->
-            {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' %}
+            <!-- Solo visible para Admin/Soporte (perm_tickets >= 2) -->
+            {% if current_user.rol.perm_tickets >= 2 %}
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-xl font-bold text-gray-800 mb-4">Acciones Rápidas</h2>
                 
@@ -211,10 +218,12 @@
                         </button>
                     </form>
                     
+                    {% if current_user.rol.perm_tickets >= 2 or ticket.id_user == current_user.id_user %}
                     <a href="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}" 
                        class="block w-full text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
                         <i class="fas fa-edit mr-2"></i> Editar Ticket
                     </a>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}

@@ -1,3 +1,37 @@
+//funcion para controlar el cerrar sesion con onclick
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencias al DOM
+    const menuButton = document.getElementById('user-menu-button');
+    const dropdownMenu = document.getElementById('user-dropdown');
+
+    // Verificar que los elementos existen (para evitar errores en login/registro)
+    if (menuButton && dropdownMenu) {
+        
+        // 1. Evento Click en el botón
+        menuButton.addEventListener('click', function(event) {
+            // Detenemos la propagación para que no se active el evento de cerrar del document inmediatamente
+            event.stopPropagation();
+            
+            // Alternar la clase 'hidden' de Tailwind
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        // 2. Evento Click dentro del menú (para que no se cierre si seleccionas algo)
+        dropdownMenu.addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+
+        // 3. Evento Click en cualquier parte de la ventana (para cerrar si haces clic fuera)
+        document.addEventListener('click', function(event) {
+            // Si el menú NO tiene la clase hidden (está visible)
+            if (!dropdownMenu.classList.contains('hidden')) {
+                // Añadir la clase hidden para cerrarlo
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+    }
+});
+
 // Funcionalidades JavaScript para el sistema de tickets
 
 document.addEventListener('DOMContentLoaded', function() {

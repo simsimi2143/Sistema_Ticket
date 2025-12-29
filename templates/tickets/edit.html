@@ -30,19 +30,24 @@
 <div class="max-w-4xl mx-auto">
     <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-800">Editar Ticket #{{ ticket.ticket_id }}</h1>
-        <p class="text-gray-600">Modifique la información del ticket</p>
+        <p class="text-gray-600">
+            {% if ticket.id_user == current_user.id_user %}
+                Editando tu ticket
+            {% else %}
+                Editando ticket de: <strong>{{ ticket.creador.name if ticket.creador else 'N/A' }}</strong>
+            {% endif %}
+        </p>
     </div>
     
     <div class="bg-white rounded-lg shadow p-6">
         <form method="POST" action="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}" enctype="multipart/form-data" id="edit-form">
             {{ form.hidden_tag() }}
-            {{ form.csrf_token }}
             
             <div class="mb-6">
                 <label for="name" class="block text-gray-700 text-sm font-bold mb-2">
                     Título del Ticket *
                 </label>
-                {{ form.name(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500") }}
+                {{ form.name(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500", placeholder="Ej: Error en el servidor") }}
                 {% if form.name.errors %}
                     {% for error in form.name.errors %}
                         <p class="text-red-500 text-xs mt-1">{{ error }}</p>
@@ -63,89 +68,129 @@
             </div>
             
             <!-- IMAGEN ACTUAL Y NUEVA IMAGEN -->
-            <div class="mb-6">
-                <label for="image" class="block text-gray-700 text-sm font-bold mb-2">
-                    Imagen Adjunta
+            <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    <i class="fas fa-image mr-2"></i>Imagen Adjunta
                 </label>
                 
                 <!-- Imagen actual -->
                 {% if ticket.has_image %}
-                <div class="mb-4">
-                    <p class="text-gray-600 text-sm mb-2">Imagen actual:</p>
-                    <div class="relative inline-block">
+                <div class="mb-4 flex items-center gap-4 flex-wrap">
+                    <div class="relative group">
                         <img src="{{ ticket.image_url }}" alt="Imagen actual del ticket" 
-                             class="current-image" id="current-image-preview">
-                        <div class="mt-2">
-                            <a href="{{ ticket.image_url }}" target="_blank" 
-                               class="text-blue-600 hover:text-blue-800 text-sm font-medium mr-4">
-                                <i class="fas fa-external-link-alt mr-1"></i> Ver original
-                            </a>
-                            <button type="button" onclick="confirmDeleteImage()" 
-                                    class="text-red-600 hover:text-red-800 text-sm font-medium">
-                                <i class="fas fa-trash-alt mr-1"></i> Eliminar
-                            </button>
-                        </div>
+                             class="current-image shadow-sm" id="current-image-preview">
+                    </div>
+                    
+                    <div class="flex flex-col gap-2">
+                        <a href="{{ ticket.image_url }}" target="_blank" 
+                           class="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center">
+                            <i class="fas fa-external-link-alt mr-1"></i> Ver original
+                        </a>
+                        
+                        <!-- Botón Eliminar Imagen: Solo visible si eres creador o Admin -->
+                        {% if ticket.id_user == current_user.id_user or current_user.rol.perm_tickets >= 2 %}
+                        <button type="button" onclick="confirmDeleteImage()" 
+                                class="text-red-600 hover:text-red-800 text-sm font-medium inline-flex items-center">
+                            <i class="fas fa-trash-alt mr-1"></i> Eliminar imagen actual
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
                 {% else %}
                 <div class="mb-4">
-                    <p class="text-gray-600 text-sm mb-2">No hay imagen adjunta</p>
+                    <p class="text-gray-500 text-sm italic">No hay imagen adjunta actualmente.</p>
                 </div>
                 {% endif %}
                 
+                <hr class="my-4 border-gray-300">
+                
                 <!-- Campo para nueva imagen -->
-                <p class="text-gray-600 text-sm mb-2">Seleccionar nueva imagen (opcional):</p>
-                {{ form.image(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500", id="new-image-input", accept=".jpg,.jpeg,.png,.gif") }}
+                <div class="mb-2">
+                    <p class="text-gray-600 text-sm mb-2">Subir nueva imagen:</p>
+                    {{ form.image(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500 bg-white", id="new-image-input", accept=".jpg,.jpeg,.png,.gif") }}
+                </div>
                 
                 <!-- Previsualización de nueva imagen -->
-                <div id="new-image-preview-container" class="image-preview-container" style="display: none;">
-                    <p class="text-gray-600 text-sm mb-2">Vista previa de la nueva imagen:</p>
-                    <img id="new-image-preview" class="image-preview" alt="Vista previa de la nueva imagen">
-                    <button type="button" id="remove-new-image" class="mt-2 text-red-600 hover:text-red-800 text-sm font-medium">
+                <div id="new-image-preview-container" class="image-preview-container hidden">
+                    <p class="text-gray-600 text-sm mb-2 font-medium">Vista previa:</p>
+                    <div class="relative inline-block">
+                        <img id="new-image-preview" class="image-preview" alt="Vista previa de la nueva imagen">
+                    </div>
+                    <button type="button" id="remove-new-image" class="mt-3 ml-2 text-red-600 hover:text-red-800 text-sm font-medium border border-red-200 px-2 py-1 rounded bg-red-50">
                         <i class="fas fa-times mr-1"></i> Cancelar cambio
                     </button>
                 </div>
                 
-                {% if form.image.errors %}
-                    {% for error in form.image.errors %}
-                        <p class="text-red-500 text-xs mt-1">{{ error }}</p>
-                    {% endfor %}
-                {% endif %}
-                <p class="text-gray-500 text-xs mt-1">Deje en blanco para mantener la imagen actual. Formatos: JPG, JPEG, PNG, GIF</p>
+                <p class="text-gray-400 text-xs mt-2">Máx 5MB. Formatos: JPG, PNG, GIF. Déjalo vacío para mantener la actual.</p>
             </div>
             
             <div class="mb-6">
                 <label for="detalles_fallo" class="block text-gray-700 text-sm font-bold mb-2">
-                    Detalles del Fallo (opcional)
+                    Detalles Técnicos / del Fallo
                 </label>
                 {{ form.detalles_fallo(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500", rows=3) }}
+                <p class="text-gray-400 text-xs mt-1">Información técnica adicional.</p>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' %}
-                <div>
-                    <label for="estado" class="block text-gray-700 text-sm font-bold mb-2">
-                        Estado
-                    </label>
-                    {{ form.estado(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500") }}
-                </div>
-                
-
-                <div>
-                    <label for="user_asigned" class="block text-gray-700 text-sm font-bold mb-2">
-                        Asignar a (opcional)
-                    </label>
-                    {{ form.user_asigned(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500") }}
-                </div>
-                {%endif%}
+            <!-- CAMPO ESTADO - Solo visible para Admin/Soporte (perm_tickets >= 2) -->
+            {% if current_user.rol.perm_tickets >= 2 %}
+            <div class="mb-6">
+                <label for="estado" class="block text-gray-700 text-sm font-bold mb-2">
+                    Estado del Ticket
+                </label>
+                {{ form.estado(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500") }}
             </div>
+            {% else %}
+            <!-- Mostrar estado actual como texto para usuarios normales -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    Estado Actual
+                </label>
+                <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                        {% if ticket.estado == 'Abierto' %}bg-yellow-100 text-yellow-800
+                        {% elif ticket.estado == 'En Progreso' %}bg-blue-100 text-blue-800
+                        {% elif ticket.estado == 'Resuelto' %}bg-green-100 text-green-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ ticket.estado }}
+                    </span>
+                    <p class="text-gray-500 text-xs mt-1">Solo el personal de soporte puede cambiar el estado.</p>
+                </div>
+            </div>
+            {% endif %}
             
-            <div class="flex justify-end space-x-4">
+            <!-- CAMPO ASIGNAR A - Solo visible para Admin/Soporte (perm_tickets >= 2) -->
+            {% if current_user.rol.perm_tickets >= 2 %}
+            <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <label for="user_asigned" class="block text-blue-900 text-sm font-bold mb-2">
+                    <i class="fas fa-user-tag mr-1"></i> Reasignar Ticket
+                </label>
+                {{ form.user_asigned(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500 bg-white") }}
+                <p class="text-blue-700 text-xs mt-1">Seleccione un técnico para este ticket.</p>
+            </div>
+            {% else %}
+            <!-- Mostrar asignación actual como texto para usuarios normales -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    Asignado a
+                </label>
+                <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    {% if ticket.asignado_a %}
+                        {{ ticket.asignado_a.name }}
+                    {% else %}
+                        <span class="text-gray-500 italic">Sin asignar</span>
+                    {% endif %}
+                    <p class="text-gray-500 text-xs mt-1">Solo el personal de soporte puede reasignar tickets.</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-8 border-t pt-6">
                 <a href="{{ url_for('main.ticket_detail', ticket_id=ticket.ticket_id) }}" 
-                   class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded">
+                   class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded text-center transition-colors">
                     Cancelar
                 </a>
-                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md hover:shadow-lg transition-all">
                     <i class="fas fa-save mr-2"></i> Guardar Cambios
                 </button>
             </div>
@@ -175,11 +220,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             reader.onload = function(e) {
                 newPreviewImage.src = e.target.result;
-                newPreviewContainer.style.display = 'block';
+                newPreviewContainer.classList.remove('hidden');
                 
-                // Ocultar imagen actual si existe
+                // Efecto visual en la imagen actual
                 if (currentImagePreview) {
-                    currentImagePreview.style.opacity = '0.5';
+                    currentImagePreview.style.opacity = '0.4';
+                    currentImagePreview.style.filter = 'grayscale(100%)';
                 }
             }
             
@@ -190,12 +236,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cancelar cambio de imagen
     removeNewImageButton.addEventListener('click', function() {
         newImageInput.value = '';
-        newPreviewContainer.style.display = 'none';
+        newPreviewContainer.classList.add('hidden');
         newPreviewImage.src = '';
         
         // Restaurar visibilidad de imagen actual
         if (currentImagePreview) {
             currentImagePreview.style.opacity = '1';
+            currentImagePreview.style.filter = 'none';
         }
     });
     
