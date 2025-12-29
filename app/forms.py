@@ -43,13 +43,7 @@ class TicketForm(FlaskForm):
     user_asigned = SelectField('Asignar a', coerce=int)
     submit = SubmitField('Guardar Ticket')
 
-class UserForm(FlaskForm):
-    name = StringField('Nombre Completo', validators=[DataRequired(), Length(min=2, max=100)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    id_rol = SelectField('Rol', coerce=int, validators=[DataRequired()])
-    depth_id = SelectField('Departamento', coerce=int)
-    status = BooleanField('Activo')
-    submit = SubmitField('Guardar Usuario')
+
 
 class DepartmentForm(FlaskForm):
     depth_name = StringField('Nombre del Departamento', validators=[DataRequired(), Length(min=2, max=100)])

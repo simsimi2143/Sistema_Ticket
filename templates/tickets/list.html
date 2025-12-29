@@ -208,7 +208,7 @@
                            class="text-blue-600 hover:text-blue-900 mr-3">Ver</a>
                         
                         <!-- Solo mostrar editar si es admin o el creador -->
-                        {% if current_user.rol.perm_tickets >= 2 or ticket.id_user == current_user.id_user %}
+                        {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' or ticket.id_user == current_user.id_user %}
                         <a href="{{ url_for('main.edit_ticket', ticket_id=ticket.ticket_id) }}" 
                            class="text-green-600 hover:text-green-900">Editar</a>
                         {% endif %}

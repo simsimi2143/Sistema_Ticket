@@ -133,7 +133,7 @@
             </div>
             
             <!-- CAMPO ESTADO - Solo visible para Admin/Soporte (perm_tickets >= 2) -->
-            {% if current_user.rol.perm_tickets >= 2 %}
+            {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' %}
             <div class="mb-6">
                 <label for="estado" class="block text-gray-700 text-sm font-bold mb-2">
                     Estado del Ticket
@@ -160,7 +160,7 @@
             {% endif %}
             
             <!-- CAMPO ASIGNAR A - Solo visible para Admin/Soporte (perm_tickets >= 2) -->
-            {% if current_user.rol.perm_tickets >= 2 %}
+            {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' %}
             <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <label for="user_asigned" class="block text-blue-900 text-sm font-bold mb-2">
                     <i class="fas fa-user-tag mr-1"></i> Reasignar Ticket
