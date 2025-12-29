@@ -221,3 +221,144 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// main.js - Al final del archivo, dentro del DOMContentLoaded
+
+// Calcular tiempo de resolución del ticket
+function calculateResolutionTime() {
+    const resolutionTimeElement = document.getElementById('tiempo-resolucion');
+    if (!resolutionTimeElement) return;
+    
+    // Buscar el estado del ticket - varias formas posibles
+    let estado = '';
+    
+    // 1. Intentar obtener del badge principal en el header
+    const estadoBadge = document.querySelector('.px-3.py-1.rounded-full.text-sm.font-semibold');
+    if (estadoBadge) {
+        estado = estadoBadge.textContent.trim();
+    }
+    
+    // 2. Si no se encuentra, buscar en el panel lateral
+    if (!estado) {
+        const estadoLabels = document.querySelectorAll('h3.text-sm.font-medium.text-gray-500');
+        estadoLabels.forEach(label => {
+            if (label.textContent.includes('Estado Actual')) {
+                const estadoSpan = label.nextElementSibling.querySelector('span');
+                if (estadoSpan) {
+                    estado = estadoSpan.textContent.trim();
+                }
+            }
+        });
+    }
+    
+    // 3. Si aún no se encuentra, buscar en el select del formulario
+    if (!estado) {
+        const estadoSelect = document.querySelector('select[name="estado"]');
+        if (estadoSelect) {
+            estado = estadoSelect.value;
+        }
+    }
+    
+    console.log('Estado encontrado:', estado); // Para depuración
+    
+    if (!estado) {
+        resolutionTimeElement.textContent = 'Estado no disponible';
+        return;
+    }
+    
+    // Solo calcular si el estado es Resuelto o Cerrado
+    if (estado !== 'Resuelto' && estado !== 'Cerrado') {
+        resolutionTimeElement.textContent = 'No aplica';
+        return;
+    }
+    
+    // Buscar fechas
+    const labels = document.querySelectorAll('h3.text-sm.font-medium.text-gray-500');
+    let creationDateText = '';
+    let updateDateText = '';
+    
+    labels.forEach(label => {
+        if (label.textContent.includes('Fecha de creación')) {
+            const dateElement = label.nextElementSibling;
+            if (dateElement && dateElement.tagName === 'P') {
+                creationDateText = dateElement.textContent.trim();
+            }
+        }
+        if (label.textContent.includes('Última actualización')) {
+            const dateElement = label.nextElementSibling;
+            if (dateElement && dateElement.tagName === 'P') {
+                updateDateText = dateElement.textContent.trim();
+            }
+        }
+    });
+    
+    console.log('Fecha creación:', creationDateText); // Para depuración
+    console.log('Fecha actualización:', updateDateText); // Para depuración
+    
+    if (!creationDateText || !updateDateText) {
+        resolutionTimeElement.textContent = 'Fechas no disponibles';
+        return;
+    }
+    
+    // Parsear fechas del formato dd/mm/yyyy HH:MM
+    const parseDate = (dateStr) => {
+        const [datePart, timePart] = dateStr.split(' ');
+        const [day, month, year] = datePart.split('/');
+        const [hour, minute] = timePart.split(':');
+        return new Date(year, month - 1, day, hour, minute);
+    };
+    
+    try {
+        const createdDate = parseDate(creationDateText);
+        const resolvedDate = parseDate(updateDateText);
+        
+        // Calcular diferencia
+        const diffMs = resolvedDate - createdDate;
+        
+        if (diffMs <= 0) {
+            resolutionTimeElement.textContent = 'No disponible';
+            return;
+        }
+        
+        // Convertir a días, horas, minutos
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        // Formatear el resultado
+        let result = '';
+        
+        if (diffDays > 0) {
+            result += `${diffDays} día${diffDays !== 1 ? 's' : ''}`;
+            if (diffHours > 0 || diffMinutes > 0) result += ', ';
+        }
+        
+        if (diffHours > 0) {
+            result += `${diffHours} hora${diffHours !== 1 ? 's' : ''}`;
+            if (diffMinutes > 0) result += ' y ';
+        }
+        
+        if (diffMinutes > 0 || (diffDays === 0 && diffHours === 0)) {
+            result += `${diffMinutes} minuto${diffMinutes !== 1 ? 's' : ''}`;
+        }
+        
+        resolutionTimeElement.textContent = result;
+    } catch (error) {
+        console.error('Error al parsear fechas:', error);
+        resolutionTimeElement.textContent = 'Error en cálculo';
+    }
+}
+
+// Ejecutar cuando se cargue la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Tu código existente...
+    
+    // Agregar la llamada a la función de cálculo de tiempo
+    calculateResolutionTime();
+    
+    // También recalcular si cambia el estado dinámicamente
+    const statusSelect = document.querySelector('select[name="estado"]');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', calculateResolutionTime);
+    }
+});

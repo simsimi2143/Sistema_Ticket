@@ -193,7 +193,14 @@
                         <h3 class="text-sm font-medium text-gray-500">Última actualización</h3>
                         <p class="mt-1 text-gray-900">{{ ticket.updated_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
                     </div>
-                </div>
+                    {% if ticket.estado == 'Resuelto' or ticket.estado == 'Cerrado' %}
+                    
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Tiempo de Resuelto-Cerrado</h3>
+                        <p class="mt-1 text-gray-900" id="tiempo-resolucion"></p>
+                    </div>
+                    {% endif %}
+                </div> 
             </div>
             
             <!-- Acciones Rápidas -->
