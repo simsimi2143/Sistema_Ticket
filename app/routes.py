@@ -155,7 +155,10 @@ def create_ticket():
     # Obtener usuarios para asignación (solo si tiene permiso)
     if current_user.rol.perm_tickets >= 2:
         usuarios = Usuario.query.filter_by(status=True).all()
-        form.user_asigned.choices = [(0, 'Sin asignar')] + [(u.id_user, u.name) for u in usuarios]
+        form.user_asigned.choices = [(0, 'Sin asignar')] + [
+            (u.id_user, f"{u.name} - {u.departamento.depth_name if u.departamento else 'Sin departamento'}") 
+            for u in usuarios
+        ]
     else:
         form.user_asigned.choices = [(0, 'Sin asignar')]
     
@@ -253,7 +256,10 @@ def edit_ticket(ticket_id):
     # Obtener usuarios para asignación (solo si tiene permiso nivel 2)
     if perm_level >= 2:
         usuarios = Usuario.query.filter_by(status=True).all()
-        form.user_asigned.choices = [(0, 'Sin asignar')] + [(u.id_user, u.name) for u in usuarios]
+        form.user_asigned.choices = [(0, 'Sin asignar')] + [
+            (u.id_user, f"{u.name} - {u.departamento.depth_name if u.departamento else 'Sin departamento'}") 
+            for u in usuarios
+        ]
         # Mostrar campo de estado para admins/soporte
         form.estado.render_kw = {}
     else:
