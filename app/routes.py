@@ -206,17 +206,27 @@ def ticket_detail(ticket_id):
 @login_required
 @permission_required('tickets', 2)
 def update_ticket_status(ticket_id):
-    """Actualizar el estado de un ticket"""
     ticket = Ticket.query.get_or_404(ticket_id)
-    estado = request.form.get('estado')
-    
-    if estado:
-        ticket.estado = estado
-        ticket.updated_at = datetime.utcnow()
-        db.session.commit()
-        flash('Estado del ticket actualizado exitosamente', 'success')
-    
+    nuevo_estado = request.form.get('estado')
+
+    estados_validos = ['Abierto', 'En Progreso', 'Resuelto', 'Cerrado']
+
+    if nuevo_estado not in estados_validos:
+        flash('Estado inválido', 'danger')
+        return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
+
+    # Bloquear volver a Abierto
+    if ticket.estado in ['Resuelto', 'Cerrado'] and nuevo_estado == 'Abierto':
+        flash('No se puede reabrir un ticket cerrado', 'danger')
+        return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
+
+    ticket.estado = nuevo_estado
+    ticket.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    flash('Estado actualizado correctamente', 'success')
     return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
+
 
 @bp.route('/tickets/<int:ticket_id>/edit', methods=['GET', 'POST'])
 @login_required

@@ -89,7 +89,7 @@
             
             <input type="hidden" name="estado" value="Abierto">
             
-            {% if current_user.rol.perm_tickets >= 2 %}
+            {% if current_user.rol.rol_name != 'Usuario' and 'Solo Lectura' %}
             <div class="mb-6">
                 <label for="user_asigned" class="block text-gray-700 text-sm font-bold mb-2">
                     Asignar a (opcional)
