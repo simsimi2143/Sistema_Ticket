@@ -66,3 +66,8 @@ erDiagram
     TICKETS ||--o{ COMENTARIOS : "contiene"
     USUARIOS ||--o{ COMENTARIOS : "escribe"
 ```
+## Flujo de funcionamiento del sistema
+![Diagramas para el sistema de tickets](https://i.imgur.com/UJH3TSA.png.jpg)
+
+![Diagramas para el sistema de tickets](https://imgur.com/UJ1FTF0.jpg)
+
