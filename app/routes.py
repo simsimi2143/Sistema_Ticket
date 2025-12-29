@@ -10,6 +10,8 @@ from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import abort
+from app.email import send_ticket_assigned_email, send_ticket_status_email, send_ticket_created_email
+
 
 # Crear el Blueprint aquí
 bp = Blueprint('main', __name__)
@@ -184,6 +186,21 @@ def create_ticket():
         
         db.session.add(ticket)
         db.session.commit()
+
+        # Enviar correo de creación
+        try:
+            send_ticket_created_email(ticket)
+        except Exception as e:
+            current_app.logger.error(f"Error enviando correo de creación: {e}")
+        
+        # Enviar correo de asignación si se asignó a alguien
+        if ticket.user_asigned:
+            assigned_user = Usuario.query.get(ticket.user_asigned)
+            if assigned_user:
+                try:
+                    send_ticket_assigned_email(ticket, assigned_user, current_user)
+                except Exception as e:
+                    current_app.logger.error(f"Error enviando correo de asignación: {e}")
         
         flash('Ticket creado exitosamente', 'success')
         return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
@@ -212,7 +229,7 @@ def ticket_detail(ticket_id):
 def update_ticket_status(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     nuevo_estado = request.form.get('estado')
-
+    old_status = ticket.estado
     estados_validos = ['Abierto', 'En Progreso', 'Resuelto', 'Cerrado']
 
     if nuevo_estado not in estados_validos:
@@ -227,6 +244,12 @@ def update_ticket_status(ticket_id):
     ticket.estado = nuevo_estado
     ticket.updated_at = datetime.utcnow()
     db.session.commit()
+
+    # Enviar correo de cambio de estado
+    try:
+        send_ticket_status_email(ticket, old_status, nuevo_estado, current_user)
+    except Exception as e:
+        current_app.logger.error(f"Error enviando correo de cambio de estado: {e}")
 
     flash('Estado actualizado correctamente', 'success')
     return redirect(url_for('main.ticket_detail', ticket_id=ticket.ticket_id))
@@ -268,6 +291,8 @@ def edit_ticket(ticket_id):
         form.user_asigned.render_kw = {'disabled': 'disabled'}
         form.estado.render_kw = {'disabled': 'disabled'}
     
+    old_assigned = ticket.user_asigned
+
     if form.validate_on_submit():
         # Manejar la subida de nueva imagen
         if form.image.data:
@@ -293,6 +318,14 @@ def edit_ticket(ticket_id):
             ticket.estado = form.estado.data
             ticket.user_asigned = form.user_asigned.data if form.user_asigned.data != 0 else None
         
+        if old_assigned != form.user_asigned.data and form.user_asigned.data != 0:
+            assigned_user = Usuario.query.get(form.user_asigned.data)
+            if assigned_user:
+                try:
+                    send_ticket_assigned_email(ticket, assigned_user, ticket.creador)
+                except Exception as e:
+                    current_app.logger.error(f"Error enviando correo de reasignación: {e}")
+
         ticket.updated_at = datetime.utcnow()
         
         db.session.commit()
@@ -378,6 +411,13 @@ def add_comment(ticket_id):
     db.session.add(comentario)
     db.session.commit()
     
+     # Opcional: Enviar correo sobre nuevo comentario
+    from app.email import send_new_comment_email
+    try:
+        send_new_comment_email(ticket, comentario, current_user)
+    except Exception as e:
+        current_app.logger.error(f"Error enviando correo de comentario: {e}")
+
     return jsonify({
         'success': True,
         'comment': {

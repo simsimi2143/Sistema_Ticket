@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado del Ticket Actualizado - Sistema de Tickets</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header-open {
+            background-color: #f59e0b;
+        }
+        .header-progress {
+            background-color: #3b82f6;
+        }
+        .header-resolved {
+            background-color: #10b981;
+        }
+        .header-closed {
+            background-color: #6b7280;
+        }
+        .content {
+            padding: 20px;
+        }
+        .status-change {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 25px 0;
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .status-old {
+            padding: 8px 16px;
+            background-color: #e5e7eb;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+        .status-new {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-left: 15px;
+        }
+        .status-new-open {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .status-new-progress {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .status-new-resolved {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .status-new-closed {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #6b7280;
+        }
+        .ticket-card {
+            background-color: #f8fafc;
+            border-left: 4px solid #4f46e5;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4f46e5;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .footer {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header 
+            {% if new_status == 'Abierto' %}header-open
+            {% elif new_status == 'En Progreso' %}header-progress
+            {% elif new_status == 'Resuelto' %}header-resolved
+            {% else %}header-closed{% endif %}">
+            <h1>Estado del Ticket Actualizado</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Hola {{ ticket.creador.name }},</h2>
+            
+            <p>El estado de tu ticket ha sido actualizado por <strong>{{ changed_by_user.name }}</strong>.</p>
+            
+            <div class="status-change">
+                <div class="status-old">{{ old_status }}</div>
+                <div class="arrow">→</div>
+                <div class="status-new 
+                    {% if new_status == 'Abierto' %}status-new-open
+                    {% elif new_status == 'En Progreso' %}status-new-progress
+                    {% elif new_status == 'Resuelto' %}status-new-resolved
+                    {% else %}status-new-closed{% endif %}">
+                    {{ new_status }}
+                </div>
+            </div>
+            
+            <div class="ticket-card">
+                <h3>#{{ ticket.ticket_id }} - {{ ticket.name }}</h3>
+                
+                <p><strong>Actualizado por:</strong> {{ changed_by_user.name }}</p>
+                <p><strong>Fecha de actualización:</strong> {{ ticket.updated_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
+                <p><strong>Descripción:</strong><br>
+                {{ ticket.description|truncate(200) }}</p>
+                
+                {% if ticket.detalles_fallo %}
+                <p><strong>Detalles técnicos:</strong><br>
+                {{ ticket.detalles_fallo|truncate(150) }}</p>
+                {% endif %}
+            </div>
+            
+            <p>
+                <a href="{{ config.APP_URL }}/tickets/{{ ticket.ticket_id }}" class="button">
+                    Ver Ticket Completo
+                </a>
+            </p>
+            
+            <div class="footer">
+                <p>Este es un correo automático del Sistema de Tickets.</p>
+                <p>Si crees que recibiste este correo por error, por favor ignóralo.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -19,6 +19,16 @@ class Config:
     
     # Configuración de paginación
     ITEMS_PER_PAGE = 10
+
+    # Configuración de correo (CORREGIDO)
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower() in ['true', '1', 't']
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'False').lower() in ['true', '1', 't']
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', 'jeanpachecotesista@gmail.com')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', 'rzfd zmjb asji edol')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'jeanpachecotesista@gmail.com')
+    APP_URL = os.environ.get('APP_URL', 'http://localhost:5000')
     
     @staticmethod
     def init_app(app):
