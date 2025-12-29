@@ -43,7 +43,7 @@
                     </span>
                     <span class="text-gray-600">
                         <i class="far fa-calendar-alt mr-1"></i>
-                        Creado: {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        Creado: {{ ticket.created_at_local.strftime('%d/%m/%Y %H:%M') }}
                     </span>
                     <span class="text-gray-600">
                         <i class="fas fa-user mr-1"></i>
@@ -75,7 +75,16 @@
                 <div class="prose max-w-none">
                     <p class="text-gray-700 whitespace-pre-line">{{ ticket.description }}</p>
                 </div>
-                
+                <!-- Agregar esta sección después de la descripción -->
+                {% if ticket.has_image %}
+                <div class="mt-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">Imagen Adjunta</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <img src="{{ ticket.image_url }}" alt="{{ ticket.name }}" 
+                             class="max-w-full h-auto rounded-lg shadow-sm">
+                    </div>
+                </div>
+                {% endif %}
                 {% if ticket.detalles_fallo %}
                 <div class="mt-6">
                     <h3 class="text-lg font-bold text-gray-800 mb-2">Detalles del Fallo</h3>
@@ -97,7 +106,7 @@
                         <div class="flex justify-between items-start mb-2">
                             <div>
                                 <strong class="text-gray-800">{{ comentario.usuario.name }}</strong>
-                                <span class="text-gray-500 text-sm ml-2">{{ comentario.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                                <span class="text-gray-500 text-sm ml-2">{{ comentario.created_at_local.strftime('%d/%m/%Y %H:%M') }}</span>
                             </div>
                         </div>
                         <p class="text-gray-700 whitespace-pre-line">{{ comentario.contenido }}</p>
@@ -171,12 +180,12 @@
                     
                     <div>
                         <h3 class="text-sm font-medium text-gray-500">Fecha de creación</h3>
-                        <p class="mt-1 text-gray-900">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mt-1 text-gray-900">{{ ticket.created_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
                     </div>
                     
                     <div>
                         <h3 class="text-sm font-medium text-gray-500">Última actualización</h3>
-                        <p class="mt-1 text-gray-900">{{ ticket.updated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mt-1 text-gray-900">{{ ticket.updated_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
                     </div>
                 </div>
             </div>
@@ -210,16 +219,7 @@
             </div>
             {% endif %}
         </div>
-        <!-- Agregar esta sección después de la descripción -->
-        {% if ticket.has_image %}
-        <div class="mt-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-2">Imagen Adjunta</h3>
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <img src="{{ ticket.image_url }}" alt="{{ ticket.name }}" 
-                     class="max-w-full h-auto rounded-lg shadow-sm">
-            </div>
-        </div>
-        {% endif %}
+        
     </div>
 </div>
 {% endblock %}
