@@ -154,7 +154,7 @@ def tickets():
 def create_ticket():
     form = TicketForm()
     
-    # Obtener usuarios para asignación (solo si tiene permiso)
+    # --- TU LÓGICA ORIGINAL DE USUARIOS ---
     if current_user.rol.perm_tickets >= 2:
         usuarios = Usuario.query.filter_by(status=True).all()
         form.user_asigned.choices = [(0, 'Sin asignar')] + [
@@ -165,35 +165,47 @@ def create_ticket():
         form.user_asigned.choices = [(0, 'Sin asignar')]
     
     if form.validate_on_submit():
-        # Manejar la subida de imagen
+        # --- TU LÓGICA ORIGINAL DE IMÁGENES ---
         image_filename = None
         image_path = None
-        
         if form.image.data:
             image_filename, image_path = save_uploaded_file(form.image.data)
         
+        # --- CREACIÓN DEL OBJETO (Respetando tus campos) ---
         ticket = Ticket(
             name=form.name.data,
             description=form.description.data,
             detalles_fallo=form.detalles_fallo.data,
             estado='Abierto',
+            prioridad=form.prioridad.data, # <--- AÑADIDO: Nueva funcionalidad
             id_user=current_user.id_user,
             user_asigned=form.user_asigned.data if form.user_asigned.data != 0 else None,
             created_by=current_user.name,
             image_filename=image_filename,
             image_path=image_path
         )
+
+        # --- AÑADIDO: Cambio automático a 'En Progreso' si nace asignado ---
+        if ticket.user_asigned:
+            ticket.estado = 'En Progreso'
         
         db.session.add(ticket)
         db.session.commit()
 
-        # Enviar correo de creación
+        # --- AÑADIDO: Alerta al Admin si NO se asignó a nadie ---
+        from app.email import send_admin_alert_unassigned
+        if ticket.user_asigned is None or ticket.user_asigned == 0:
+            try:
+                send_admin_alert_unassigned(ticket)
+            except Exception as e:
+                current_app.logger.error(f"Error al llamar alerta admin: {e}")
+
+        # --- TU LÓGICA ORIGINAL DE CORREOS ---
         try:
             send_ticket_created_email(ticket)
         except Exception as e:
             current_app.logger.error(f"Error enviando correo de creación: {e}")
         
-        # Enviar correo de asignación si se asignó a alguien
         if ticket.user_asigned:
             assigned_user = Usuario.query.get(ticket.user_asigned)
             if assigned_user:
@@ -261,32 +273,25 @@ def update_ticket_status(ticket_id):
 def edit_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     
-    # --- LÓGICA DE PERMISOS ---
-    # Verificar si es el creador del ticket
+    # --- LÓGICA DE PERMISOS (Tu original) ---
     is_creator = ticket.id_user == current_user.id_user
-    
-    # Verificar nivel de permiso (Soporte/Admin = 2, Usuario Básico = 1)
     perm_level = current_user.rol.perm_tickets if current_user.rol else 0
     
-    # Permitir si es Administrador/Soporte (puede editar todos)
-    # O si es el creador y tiene al menos permiso nivel 1
     if not (perm_level >= 2 or (is_creator and perm_level >= 1)):
         abort(403) # Forbidden
     # ---------------------------
 
     form = TicketForm(obj=ticket)
     
-    # Obtener usuarios para asignación (solo si tiene permiso nivel 2)
+    # Obtener usuarios para asignación (Tu lógica original)
     if perm_level >= 2:
         usuarios = Usuario.query.filter_by(status=True).all()
         form.user_asigned.choices = [(0, 'Sin asignar')] + [
             (u.id_user, f"{u.name} - {u.departamento.depth_name if u.departamento else 'Sin departamento'}") 
             for u in usuarios
         ]
-        # Mostrar campo de estado para admins/soporte
         form.estado.render_kw = {}
     else:
-        # Para usuarios normales, no mostrar campo de asignación ni estado
         form.user_asigned.choices = [(0, 'No disponible')]
         form.user_asigned.render_kw = {'disabled': 'disabled'}
         form.estado.render_kw = {'disabled': 'disabled'}
@@ -294,32 +299,43 @@ def edit_ticket(ticket_id):
     old_assigned = ticket.user_asigned
 
     if form.validate_on_submit():
-        # Manejar la subida de nueva imagen
+        # --- MANEJO DE IMAGEN (Tu lógica original) ---
         if form.image.data:
-            # Eliminar imagen anterior si existe
             if ticket.image_filename:
                 ticket.delete_image()
                 ticket.image_filename = None
                 ticket.image_path = None
             
-            # Guardar nueva imagen
             image_filename, _ = save_uploaded_file(form.image.data)
             if image_filename:
                 ticket.image_filename = image_filename
                 ticket.image_path = f"uploads/{image_filename}"
         
-        # Actualizar otros campos
+        # --- ACTUALIZACIÓN DE CAMPOS ---
         ticket.name = form.name.data
         ticket.description = form.description.data
         ticket.detalles_fallo = form.detalles_fallo.data
+        
+        # NUEVO: Actualizar Prioridad
+        ticket.prioridad = form.prioridad.data 
         
         # Solo los admins (Nivel 2+) pueden cambiar el estado y asignación
         if perm_level >= 2:
             ticket.estado = form.estado.data
             ticket.user_asigned = form.user_asigned.data if form.user_asigned.data != 0 else None
-        
-        if old_assigned != form.user_asigned.data and form.user_asigned.data != 0:
-            assigned_user = Usuario.query.get(form.user_asigned.data)
+            
+            # NUEVO: Cambio automático a 'En Progreso' si se asigna ahora y estaba 'Abierto'
+            if old_assigned is None and ticket.user_asigned is not None:
+                if ticket.estado == 'Abierto':
+                    ticket.estado = 'En Progreso'
+                    # AÑADIR ESTO: Notificar al creador que pasó a En Progreso por la asignación
+                    try:
+                        send_ticket_status_email(ticket, 'Abierto', 'En Progreso', current_user)
+                    except Exception as e:
+                        current_app.logger.error(f"Error correo estado automático: {e}")
+        # --- LÓGICA DE CORREO POR REASIGNACIÓN ---
+        if old_assigned != ticket.user_asigned and ticket.user_asigned is not None:
+            assigned_user = Usuario.query.get(ticket.user_asigned)
             if assigned_user:
                 try:
                     send_ticket_assigned_email(ticket, assigned_user, ticket.creador)

@@ -202,3 +202,23 @@ def send_new_comment_email(ticket, comment, comment_author):
         
         send_email(subject, list(recipients), text_body, html_body)
         current_app.logger.info(f"Correo de comentario enviado a {len(recipients)} destinatarios")
+
+def send_admin_alert_unassigned(ticket):
+    """Notifica a todos los admins cuando se crea un ticket sin asignar"""
+    from app.models import Usuario, Rol
+    # Filtramos por perm_admin > 0
+    admins = Usuario.query.join(Rol).filter(Rol.perm_admin > 0).all()
+    # Asegúrate de que esto sea una lista limpia de strings
+    recipients = [str(admin.email) for admin in admins if admin.email]
+    
+    if recipients:
+        subject = f"⚠️ NUEVO TICKET SIN ASIGNAR: #{ticket.ticket_id}"
+        text_body = f"Se ha creado un nuevo ticket que requiere atención.\n\n" \
+                    f"Ticket: {ticket.name}\n" \
+                    f"Prioridad: {ticket.prioridad}\n" \
+                    f"Creado por: {ticket.created_by}"
+        
+        # Intentamos enviar (puedes quitar el Thread temporalmente para probar si llega)
+        send_email(subject, recipients, text_body)
+    else:
+        current_app.logger.warning("No se encontraron administradores con correo electrónico configurado.")       

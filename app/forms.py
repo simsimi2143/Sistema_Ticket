@@ -41,6 +41,10 @@ class TicketForm(FlaskForm):
         ('Cerrado', 'Cerrado')
     ])
     user_asigned = SelectField('Asignar a', coerce=int)
+    prioridad = SelectField('Prioridad', 
+                            choices=[('Baja', 'Baja'), ('Media', 'Media'), ('Alta', 'Alta')], 
+                            default='Media',
+                            validators=[DataRequired()])
     submit = SubmitField('Guardar Ticket')
 
 

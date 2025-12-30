@@ -103,6 +103,7 @@ class Ticket(db.Model):
     
     ticket_id = db.Column(db.Integer, primary_key=True)
     id_user = db.Column(db.Integer, db.ForeignKey('usuarios.id_user'), nullable=False)
+    prioridad = db.Column(db.String(20), default='Media') # Baja, Media, Alta
     name = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     estado = db.Column(db.String(50), default='Abierto')

@@ -147,6 +147,13 @@
                 {{ form.user_asigned(class="w-full px-4 py-2 border rounded-lg text-gray-700 focus:outline-none focus:border-blue-500 bg-white") }}
                 <p class="text-blue-700 text-xs mt-1">Seleccione un técnico para este ticket.</p>
             </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Prioridad del Ticket</label>
+                {{ form.prioridad(class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500") }}
+                {% for error in form.prioridad.errors %}
+                    <span class="text-red-500 text-xs">{{ error }}</span>
+                {% endfor %}
+            </div>
             {% else %}
             <!-- Mostrar asignación actual como texto para usuarios normales -->
             <div class="mb-6">
