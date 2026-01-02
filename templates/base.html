@@ -54,11 +54,7 @@
                                     <i class="fas fa-plus-circle mr-2 text-blue-600"></i>Nuevo Ticket
                                 </a>
                                 {% endif %}
-                                {% if current_user.rol and current_user.rol.perm_admin %}
-                                <a href="{{ url_for('main.admin_reportes') }}" class="block px-4 py-2 hover:bg-gray-100 border-b border-gray-100">
-                                    <i class="fas fa-chart-line mr-2 text-blue-600"></i>Reportes
-                                </a>
-                                {% endif %}
+                                
                                 <a href="{{ url_for('auth.logout') }}" class="block px-4 py-2 hover:bg-red-50 text-red-600">
                                     <i class="fas fa-sign-out-alt mr-2"></i>Cerrar Sesión
                                 </a>
