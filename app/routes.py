@@ -1,4 +1,6 @@
 from flask import render_template, redirect, url_for, flash, request, jsonify, Blueprint, current_app
+from flask import send_file, jsonify
+import base64
 from flask_login import login_required, current_user
 from app import db
 from app.models import Usuario, Ticket, Departamento, Rol, Comentario
@@ -11,7 +13,10 @@ import os
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import abort
 from app.email import send_ticket_assigned_email, send_ticket_status_email, send_ticket_created_email
-
+from app.reportes import (
+    generar_reporte_usuarios,
+    generar_reporte_departamentos
+)
 
 # Crear el Blueprint aquí
 bp = Blueprint('main', __name__)
@@ -688,3 +693,152 @@ def toggle_role_status(role_id):
     status = 'activado' if role.status else 'desactivado'
     flash(f'Rol {status} exitosamente', 'success')
     return redirect(url_for('main.admin_roles'))    
+
+# ==============================
+# PÁGINA PRINCIPAL DE REPORTES
+# ==============================
+
+@bp.route('/admin/reportes')
+@login_required
+@admin_required
+def admin_reportes():
+    """Página principal de reportes"""
+    return render_template('admin/reportes.html')
+
+# ==============================
+# VISTA PREVIA DE REPORTES
+# ==============================
+
+@bp.route('/admin/reportes/usuarios/preview')
+@login_required
+@admin_required
+def preview_reporte_usuarios():
+    """Vista previa del reporte de usuarios"""
+    from app.reportes import obtener_tickets_por_usuario, obtener_metricas_globales
+    
+    metricas = obtener_metricas_globales()
+    data = obtener_tickets_por_usuario()
+    
+    # Transformar los datos a un formato serializable
+    usuarios_serializables = []
+    for item in data[:10]:  # Solo los primeros 10
+        usuarios_serializables.append({
+            'usuario': {
+                'id_user': item['usuario'].id_user,
+                'name': item['usuario'].name,
+                'departamento': {
+                    'depth_name': item['usuario'].departamento.depth_name if item['usuario'].departamento else None
+                } if item['usuario'].departamento else None
+            },
+            'total': item['total']
+        })
+    
+    # Preparar datos para el template
+    preview_data = {
+        'metricas': {
+            'total': metricas['total'],
+            'abiertos': metricas['abiertos'],
+            'cerrados': metricas['cerrados'],
+            'por_estado': metricas['por_estado']  # Ahora es una lista de listas, serializable
+        },
+        'usuarios': usuarios_serializables,
+        'total_usuarios': len(data),
+        'tipo': 'usuarios'
+    }
+    
+    return jsonify(preview_data)
+
+@bp.route('/admin/reportes/departamentos/preview')
+@login_required
+@admin_required
+def preview_reporte_departamentos():
+    """Vista previa del reporte de departamentos"""
+    from app.reportes import obtener_tickets_por_departamento, obtener_metricas_globales
+    
+    metricas = obtener_metricas_globales()
+    data = obtener_tickets_por_departamento()
+    
+    # Transformar los datos a un formato serializable
+    departamentos_serializables = []
+    for dept, cantidad in data:
+        departamentos_serializables.append({
+            'nombre': dept,
+            'cantidad': cantidad
+        })
+    
+    # Preparar datos para el template
+    preview_data = {
+        'metricas': {
+            'total': metricas['total'],
+            'abiertos': metricas['abiertos'],
+            'cerrados': metricas['cerrados'],
+            'por_estado': metricas['por_estado']  # Ahora es una lista de listas, serializable
+        },
+        'departamentos': departamentos_serializables,
+        'total_departamentos': len(data),
+        'tipo': 'departamentos'
+    }
+    
+    return jsonify(preview_data)
+
+# ==============================
+# GENERACIÓN Y DESCARGA DE REPORTES
+# ==============================
+
+@bp.route('/admin/reportes/usuarios/generar')
+@login_required
+@admin_required
+def generar_reporte_usuarios_download():
+    """Genera y descarga el reporte de usuarios"""
+    import io
+    from app.reportes import generar_reporte_usuarios
+    
+    # Crear un buffer en memoria en lugar de un archivo temporal
+    buffer = io.BytesIO()
+    
+    try:
+        # Modificar tu función generar_reporte_usuarios para que acepte un buffer
+        generar_reporte_usuarios(buffer)
+        
+        # Preparar el buffer para lectura
+        buffer.seek(0)
+        
+        # Enviar el archivo desde el buffer
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f'reporte_usuarios_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        buffer.close()
+        raise e
+
+@bp.route('/admin/reportes/departamentos/generar')
+@login_required
+@admin_required
+def generar_reporte_departamentos_download():
+    """Genera y descarga el reporte de departamentos"""
+    import io
+    from app.reportes import generar_reporte_departamentos
+    
+    # Crear un buffer en memoria en lugar de un archivo temporal
+    buffer = io.BytesIO()
+    
+    try:
+        # Modificar tu función generar_reporte_departamentos para que acepte un buffer
+        generar_reporte_departamentos(buffer)
+        
+        # Preparar el buffer para lectura
+        buffer.seek(0)
+        
+        # Enviar el archivo desde el buffer
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f'reporte_departamentos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf',
+            mimetype='application/pdf'
+        )
+    except Exception as e:
+        buffer.close()
+        raise e

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes - Sistema de Tickets{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">📊 Generación de Reportes</h1>
+        <p class="text-gray-600 mt-2">Genera reportes detallados con gráficos y análisis</p>
+    </div>
+
+    <!-- Tarjetas de Reportes -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Reporte por Usuario -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="bg-gradient-to-r from-blue-600 to-blue-400 p-6">
+                <i class="fas fa-users text-white text-4xl mb-3"></i>
+                <h2 class="text-2xl font-bold text-white">Reporte por Usuario</h2>
+                <p class="text-blue-100 mt-2">Análisis de tickets por usuario con métricas detalladas</p>
+            </div>
+            <div class="p-6">
+                <ul class="space-y-2 mb-6">
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Gráfico de distribución por estado
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Top 10 usuarios más activos
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Listado detallado de tickets
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Métricas globales del sistema
+                    </li>
+                </ul>
+                <div class="flex space-x-3">
+                    <button onclick="mostrarVistaPrevia('usuarios')" 
+                            class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-4 rounded inline-flex items-center justify-center">
+                        <i class="fas fa-eye mr-2"></i> Vista Previa
+                    </button>
+                    <a href="{{ url_for('main.generar_reporte_usuarios_download') }}" 
+                       class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded inline-flex items-center justify-center">
+                        <i class="fas fa-download mr-2"></i> Descargar
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reporte por Departamento -->
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div class="bg-gradient-to-r from-purple-600 to-purple-400 p-6">
+                <i class="fas fa-building text-white text-4xl mb-3"></i>
+                <h2 class="text-2xl font-bold text-white">Reporte por Departamento</h2>
+                <p class="text-purple-100 mt-2">Análisis de tickets por área organizacional</p>
+            </div>
+            <div class="p-6">
+                <ul class="space-y-2 mb-6">
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Gráfico de distribución por estado
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Comparativa entre departamentos
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Porcentajes y estadísticas
+                    </li>
+                    <li class="flex items-center text-gray-700">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Análisis de carga de trabajo
+                    </li>
+                </ul>
+                <div class="flex space-x-3">
+                    <button onclick="mostrarVistaPrevia('departamentos')" 
+                            class="flex-1 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold py-3 px-4 rounded inline-flex items-center justify-center">
+                        <i class="fas fa-eye mr-2"></i> Vista Previa
+                    </button>
+                    <a href="{{ url_for('main.generar_reporte_departamentos_download') }}" 
+                       class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded inline-flex items-center justify-center">
+                        <i class="fas fa-download mr-2"></i> Descargar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="mt-8 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-info-circle text-blue-400 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800">Información sobre los reportes</h3>
+                <div class="mt-2 text-sm text-blue-700">
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>Los reportes se generan en formato PDF con gráficos profesionales</li>
+                        <li>La vista previa muestra un resumen de los datos principales</li>
+                        <li>Los archivos PDF incluyen información completa y detallada</li>
+                        <li>Los gráficos utilizan colores corporativos para mejor visualización</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incluir el modal aquí -->
+<!-- Copiar todo el código del modal del artifact anterior -->
+{% endblock %}

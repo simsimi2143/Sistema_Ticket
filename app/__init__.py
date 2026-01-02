@@ -9,6 +9,7 @@ from config import Config
 import os
 import pytz
 
+
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
