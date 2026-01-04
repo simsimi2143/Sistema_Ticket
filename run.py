@@ -1,3 +1,9 @@
+# run.py - VERSIÓN CORREGIDA
+from dotenv import load_dotenv
+
+# ¡ESTO ES LO QUE FALTA! Cargar las variables del archivo .env
+load_dotenv()
+
 from app import create_app, db
 from app.models import Usuario, Rol, Departamento, Ticket
 
@@ -14,4 +20,4 @@ def make_shell_context():
     }
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0')
