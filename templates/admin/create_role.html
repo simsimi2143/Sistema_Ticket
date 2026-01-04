@@ -95,7 +95,9 @@
                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded">
                     Cancelar
                 </a>
-                {{ form.submit(class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded") }}
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded">
+                    {{ 'Actualizar Rol' if role else 'Crear Rol' }}
+                </button>
             </div>
         </form>
     </div>
