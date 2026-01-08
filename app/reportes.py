@@ -84,48 +84,37 @@ def obtener_tickets_por_usuario():
 # ======================================================
 
 def obtener_tickets_por_departamento():
-    # Opción 1: Tickets creados por usuarios del departamento
-    resultados_creados = (
+    """Obtiene estadísticas de tickets por departamento basado en asignación"""
+    
+    # Contar tickets asignados a usuarios de cada departamento
+    resultados = (
         db.session.query(
             Departamento.depth_name.label('departamento'),
             func.count(Ticket.ticket_id).label('cantidad')
         )
         .join(Usuario, Usuario.depth_id == Departamento.depth_id)
-        .join(Ticket, Ticket.id_user == Usuario.id_user)
+        .join(Ticket, Ticket.user_asigned == Usuario.id_user)  # ← Cambiado a user_asigned
+        .filter(Ticket.user_asigned.isnot(None))  # Solo tickets asignados
         .group_by(Departamento.depth_name)
         .all()
     )
     
-    # Opción 2: Tickets asignados a usuarios del departamento
-    resultados_asignados = (
-        db.session.query(
-            Departamento.depth_name.label('departamento'),
-            func.count(Ticket.ticket_id).label('cantidad')
-        )
-        .join(Usuario, Usuario.depth_id == Departamento.depth_id)
-        .join(Ticket, Ticket.user_asigned == Usuario.id_user)
-        .group_by(Departamento.depth_name)
-        .all()
-    )
-    
-    # Opción 3: Tickets de usuarios sin departamento
+    # Tickets asignados a usuarios sin departamento
     tickets_sin_depto = Ticket.query.join(
-        Usuario, Ticket.id_user == Usuario.id_user
+        Usuario, Ticket.user_asigned == Usuario.id_user
     ).filter(
-        Usuario.depth_id == None
+        Usuario.depth_id == None,
+        Ticket.user_asigned.isnot(None)
     ).count()
     
-    # Combinar resultados
-    # (Esto depende de cómo quieres contar: creados, asignados, o ambos)
-    
-    # Para reporte simple: solo tickets creados por departamento
-    resultados = [[dept, cantidad] for dept, cantidad in resultados_creados]
+    # Convertir resultados a lista de listas
+    data = [[dept, cantidad] for dept, cantidad in resultados]
     
     # Agregar "Sin Departamento" si hay tickets
     if tickets_sin_depto > 0:
-        resultados.append(['Sin Departamento', tickets_sin_depto])
+        data.append(['Sin Departamento', tickets_sin_depto])
     
-    return resultados
+    return data
 
 # ======================================================
 # GENERACIÓN DE GRÁFICOS

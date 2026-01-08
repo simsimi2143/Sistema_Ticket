@@ -13,10 +13,7 @@ import os
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import abort
 from app.email import send_ticket_assigned_email, send_ticket_status_email, send_ticket_created_email
-from app.reportes import (
-    generar_reporte_usuarios,
-    generar_reporte_departamentos
-)
+
 
 # Crear el Blueprint aquí
 bp = Blueprint('main', __name__)
