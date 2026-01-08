@@ -18,13 +18,11 @@ def resource_path(relative_path):
         base_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
     return os.path.join(base_path, relative_path)
 
-
-
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
-mail = Mail()  # Agregar esto
+mail = Mail()
 
 def create_app(config_class=Config):
     app = Flask(
@@ -34,6 +32,9 @@ def create_app(config_class=Config):
     )
 
     app.config.from_object(config_class)
+    
+    # Configurar zona horaria global
+    app.timezone = pytz.timezone(app.config['TIMEZONE'])
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -46,10 +47,13 @@ def create_app(config_class=Config):
     from app.routes import bp as main_bp
     app.register_blueprint(main_bp)
 
-    app.timezone = pytz.timezone(app.config['TIMEZONE'])
-
     @app.context_processor
     def inject_now():
-        return {'chile_now': datetime.now(app.timezone)}
+        """Inyecta la hora actual de Chile en todas las plantillas"""
+        from app.models import utc_to_local  # Importar aquí para evitar circular imports
+        return {
+            'chile_now': utc_to_local(datetime.utcnow()),
+            'app_timezone': app.timezone
+        }
 
     return app

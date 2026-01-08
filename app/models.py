@@ -2,31 +2,39 @@ from datetime import datetime
 from app import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import current_app
 import pytz
-import os
 
 # =====================
-# Helpers de fecha
+# Helpers de fecha - REVISADO
 # =====================
 def utc_now():
     """Fecha actual en UTC (naive, compatible con SQLAlchemy)"""
     return datetime.utcnow()
 
-def to_local(dt):
-    """Convierte una fecha UTC a la zona configurada"""
-    if not dt:
+def get_app_timezone():
+    """Obtiene la zona horaria configurada en la app"""
+    try:
+        from flask import current_app
+        return pytz.timezone(current_app.config.get('TIMEZONE', 'UTC'))
+    except:
+        # Fallback a Chile si no hay app context
+        return pytz.timezone('America/Santiago')
+
+def utc_to_local(utc_dt):
+    """Convierte datetime UTC a hora local de la app"""
+    if not utc_dt:
         return None
-
-    tz = pytz.timezone(current_app.config.get('TIMEZONE', 'UTC'))
-
-    if dt.tzinfo is None:
-        dt = pytz.utc.localize(dt)
-
-    return dt.astimezone(tz)
+    
+    # Si ya tiene timezone info, asegurar que es UTC
+    if utc_dt.tzinfo is None:
+        utc_dt = pytz.utc.localize(utc_dt)
+    
+    # Convertir a zona horaria de la app
+    local_tz = get_app_timezone()
+    return utc_dt.astimezone(local_tz)
 
 # =====================
-# MODELOS
+# MODELOS (sin cambios en la estructura)
 # =====================
 
 class Rol(db.Model):
@@ -64,6 +72,14 @@ class Departamento(db.Model):
 
     def __repr__(self):
         return f'<Departamento {self.depth_name}>'
+    
+    @property
+    def created_at_local(self):
+        return utc_to_local(self.created_at)
+    
+    @property
+    def updated_at_local(self):
+        return utc_to_local(self.updated_at)
 
 
 class Usuario(UserMixin, db.Model):
@@ -128,11 +144,25 @@ class Ticket(db.Model):
     # ======== PROPIEDADES DE FECHA ========
     @property
     def created_at_local(self):
-        return to_local(self.created_at)
+        """Devuelve la fecha creada en hora local"""
+        return utc_to_local(self.created_at)
 
     @property
     def updated_at_local(self):
-        return to_local(self.updated_at)
+        """Devuelve la fecha actualizada en hora local"""
+        return utc_to_local(self.updated_at)
+    
+    @property
+    def created_at_formatted(self):
+        """Devuelve la fecha creada formateada para mostrar"""
+        local_dt = self.created_at_local
+        return local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else None
+    
+    @property
+    def updated_at_formatted(self):
+        """Devuelve la fecha actualizada formateada para mostrar"""
+        local_dt = self.updated_at_local
+        return local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else None
 
     # ======== IMAGEN ========
     @property
@@ -147,6 +177,8 @@ class Ticket(db.Model):
         if not self.image_filename:
             return
         try:
+            from flask import current_app
+            import os
             upload_folder = current_app.config['UPLOAD_FOLDER']
             file_path = os.path.join(upload_folder, self.image_filename)
             if os.path.exists(file_path):
@@ -171,7 +203,12 @@ class Comentario(db.Model):
 
     @property
     def created_at_local(self):
-        return to_local(self.created_at)
+        return utc_to_local(self.created_at)
+    
+    @property
+    def created_at_formatted(self):
+        local_dt = self.created_at_local
+        return local_dt.strftime('%d/%m/%Y %H:%M') if local_dt else None
 
     def __repr__(self):
         return f'<Comentario {self.id}>'

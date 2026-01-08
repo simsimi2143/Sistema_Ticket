@@ -52,7 +52,7 @@
                     </span>
                     <span class="text-gray-600">
                         <i class="far fa-calendar-alt mr-1"></i>
-                        Creado: {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}
+                        Creado: {{ ticket.created_at_local.strftime('%d/%m/%Y %H:%M') }}
                     </span>
                     <span class="text-gray-600">
                         <i class="fas fa-user mr-1"></i>
@@ -211,12 +211,12 @@
                     
                     <div>
                         <h3 class="text-sm font-medium text-gray-500">Fecha de creación</h3>
-                        <p class="mt-1 text-gray-900">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mt-1 text-gray-900">{{ ticket.created_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
                     </div>
                     
                     <div>
                         <h3 class="text-sm font-medium text-gray-500">Última actualización</h3>
-                        <p class="mt-1 text-gray-900">{{ ticket.updated_at.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mt-1 text-gray-900">{{ ticket.updated_at_local.strftime('%d/%m/%Y %H:%M') }}</p>
                     </div>
                     
                     {% if ticket.estado == 'Resuelto' or ticket.estado == 'Cerrado' %}
