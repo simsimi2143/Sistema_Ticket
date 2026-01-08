@@ -713,7 +713,7 @@ def admin_reportes():
 @login_required
 @admin_required
 def preview_reporte_usuarios():
-    """Vista previa del reporte de usuarios"""
+    """Vista previa del reporte de usuarios con columnas separadas"""
     from app.reportes import obtener_tickets_por_usuario, obtener_metricas_globales
     
     metricas = obtener_metricas_globales()
@@ -722,16 +722,20 @@ def preview_reporte_usuarios():
     # Transformar los datos a un formato serializable
     usuarios_serializables = []
     for item in data[:10]:  # Solo los primeros 10
-        usuarios_serializables.append({
+        usuario = item['usuario']  # Objeto Usuario
+        usuario_data = {
             'usuario': {
-                'id_user': item['usuario'].id_user,
-                'name': item['usuario'].name,
+                'id_user': usuario.id_user,
+                'name': usuario.name,
                 'departamento': {
-                    'depth_name': item['usuario'].departamento.depth_name if item['usuario'].departamento else None
-                } if item['usuario'].departamento else None
+                    'depth_name': usuario.departamento.depth_name if usuario.departamento else None
+                } if usuario.departamento else None
             },
-            'total': item['total']
-        })
+            'total_creados': item['total_creados'],
+            'total_asignados': item['total_asignados'],
+            'total_general': item['total_general']
+        }
+        usuarios_serializables.append(usuario_data)
     
     # Preparar datos para el template
     preview_data = {
@@ -739,7 +743,7 @@ def preview_reporte_usuarios():
             'total': metricas['total'],
             'abiertos': metricas['abiertos'],
             'cerrados': metricas['cerrados'],
-            'por_estado': metricas['por_estado']  # Ahora es una lista de listas, serializable
+            'por_estado': metricas['por_estado']
         },
         'usuarios': usuarios_serializables,
         'total_usuarios': len(data),

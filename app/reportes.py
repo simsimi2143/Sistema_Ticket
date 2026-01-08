@@ -50,24 +50,33 @@ def obtener_metricas_globales():
 # ======================================================
 
 def obtener_tickets_por_usuario():
+    """Obtiene estadísticas de tickets por usuario, separando creados vs asignados"""
+    
+    # Primero obtener todos los usuarios activos
     usuarios = Usuario.query.filter(Usuario.status == True).all()
     data = []
 
     for usuario in usuarios:
-        tickets = Ticket.query.filter(
-            or_(
-                Ticket.id_user == usuario.id_user,
-                Ticket.user_asigned == usuario.id_user
-            )
-        ).all()
-
-        if tickets:
+        # Tickets creados por el usuario
+        tickets_creados = Ticket.query.filter_by(id_user=usuario.id_user).count()
+        
+        # Tickets asignados al usuario
+        tickets_asignados = Ticket.query.filter_by(user_asigned=usuario.id_user).count()
+        
+        total_general = tickets_creados + tickets_asignados
+        
+        # Solo incluir usuarios que tengan al menos un ticket creado o asignado
+        if total_general > 0:
             data.append({
-                "usuario": usuario,
-                "tickets": tickets,
-                "total": len(tickets)
+                "usuario": usuario,  # ← CAMBIADO: objeto Usuario directamente
+                "total_creados": tickets_creados,
+                "total_asignados": tickets_asignados,
+                "total_general": total_general
             })
 
+    # Ordenar por total general (descendente)
+    data.sort(key=lambda x: x['total_general'], reverse=True)
+    
     return data
 
 # ======================================================
@@ -75,20 +84,46 @@ def obtener_tickets_por_usuario():
 # ======================================================
 
 def obtener_tickets_por_departamento():
-    resultados = (
+    # Opción 1: Tickets creados por usuarios del departamento
+    resultados_creados = (
         db.session.query(
-            Departamento.depth_name,
+            Departamento.depth_name.label('departamento'),
             func.count(Ticket.ticket_id).label('cantidad')
         )
         .join(Usuario, Usuario.depth_id == Departamento.depth_id)
         .join(Ticket, Ticket.id_user == Usuario.id_user)
         .group_by(Departamento.depth_name)
-        .order_by(func.count(Ticket.ticket_id).desc())
         .all()
     )
     
-    # Convertir objetos Row a listas simples
-    resultados = [[dept, cantidad] for dept, cantidad in resultados]
+    # Opción 2: Tickets asignados a usuarios del departamento
+    resultados_asignados = (
+        db.session.query(
+            Departamento.depth_name.label('departamento'),
+            func.count(Ticket.ticket_id).label('cantidad')
+        )
+        .join(Usuario, Usuario.depth_id == Departamento.depth_id)
+        .join(Ticket, Ticket.user_asigned == Usuario.id_user)
+        .group_by(Departamento.depth_name)
+        .all()
+    )
+    
+    # Opción 3: Tickets de usuarios sin departamento
+    tickets_sin_depto = Ticket.query.join(
+        Usuario, Ticket.id_user == Usuario.id_user
+    ).filter(
+        Usuario.depth_id == None
+    ).count()
+    
+    # Combinar resultados
+    # (Esto depende de cómo quieres contar: creados, asignados, o ambos)
+    
+    # Para reporte simple: solo tickets creados por departamento
+    resultados = [[dept, cantidad] for dept, cantidad in resultados_creados]
+    
+    # Agregar "Sin Departamento" si hay tickets
+    if tickets_sin_depto > 0:
+        resultados.append(['Sin Departamento', tickets_sin_depto])
     
     return resultados
 
@@ -126,23 +161,40 @@ def generar_grafico_estados(metricas):
     return buffer
 
 def generar_grafico_barras_usuarios(data):
-    """Genera gráfico de barras para tickets por usuario"""
-    fig, ax = plt.subplots(figsize=(8, 5))
+    """Genera gráfico de barras apiladas para tickets por usuario (creados vs asignados)"""
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # Tomar top 10 usuarios
-    data_sorted = sorted(data, key=lambda x: x['total'], reverse=True)[:10]
+    data_sorted = data[:10]
     
-    nombres = [d['usuario'].name[:20] for d in data_sorted]
-    totales = [d['total'] for d in data_sorted]
+    # Acceder al objeto Usuario directamente
+    nombres = [d['usuario'].name[:15] + "..." if len(d['usuario'].name) > 15 else d['usuario'].name 
+               for d in data_sorted]
+    creados = [d['total_creados'] for d in data_sorted]
+    asignados = [d['total_asignados'] for d in data_sorted]
     
-    ax.barh(nombres, totales, color='#1f3c88')
+    # Crear gráfico de barras apiladas
+    p1 = ax.barh(nombres, creados, color='#1f3c88', label='Creados')
+    p2 = ax.barh(nombres, asignados, left=creados, color='#10b981', label='Asignados')
+    
     ax.set_xlabel('Cantidad de Tickets', fontweight='bold')
-    ax.set_title('Top 10 Usuarios con más Tickets', fontweight='bold')
+    ax.set_title('Top 10 Usuarios - Tickets Creados vs Asignados', fontweight='bold', pad=20)
     ax.invert_yaxis()
     
+    # Agregar leyenda
+    ax.legend(loc='upper right')
+    
     # Agregar valores en las barras
-    for i, v in enumerate(totales):
-        ax.text(v + 0.5, i, str(v), va='center')
+    for i, (creado, asignado) in enumerate(zip(creados, asignados)):
+        total = creado + asignado
+        if total > 0:
+            # Mostrar total
+            ax.text(total + 0.5, i, str(total), va='center', fontweight='bold')
+            # Mostrar valores individuales si hay espacio
+            if creado > 0:
+                ax.text(creado/2, i, str(creado), ha='center', va='center', color='white', fontweight='bold')
+            if asignado > 0 and creado > 0:
+                ax.text(creado + asignado/2, i, str(asignado), ha='center', va='center', color='white', fontweight='bold')
     
     buffer = BytesIO()
     plt.tight_layout()
@@ -242,7 +294,7 @@ def generar_reporte_usuarios(path_pdf):
 
     c = canvas.Canvas(path_pdf, pagesize=A4)
     encabezado_pdf(c, "Reporte de Tickets por Usuario")
-
+    
     y = A4[1] - 110
     y = dibujar_metricas(c, metricas, y)
     
@@ -267,7 +319,7 @@ def generar_reporte_usuarios(path_pdf):
         insertar_grafico(c, grafico_estados, 2*cm, y, 12*cm, 8*cm)
         y -= 20
 
-    # GRÁFICO DE USUARIOS
+    # GRÁFICO DE USUARIOS (BARRAS APILADAS)
     if len(data) > 0:
         c.showPage()
         encabezado_pdf(c, "Reporte de Tickets por Usuario")
@@ -275,12 +327,12 @@ def generar_reporte_usuarios(path_pdf):
         
         grafico_usuarios = generar_grafico_barras_usuarios(data)
         c.setFont("Helvetica-Bold", 11)
-        c.drawString(2 * cm, y, "Top 10 Usuarios")
+        c.drawString(2 * cm, y, "Top 10 Usuarios - Creados vs Asignados")
         y -= 150
         insertar_grafico(c, grafico_usuarios, 2*cm, y, 14*cm, 10*cm)
         y -= 20
 
-    # DETALLES POR USUARIO
+    # DETALLES POR USUARIO (CON COLUMNAS SEPARADAS)
     c.showPage()
     encabezado_pdf(c, "Reporte de Tickets por Usuario - Detalle")
     y = A4[1] - 110
@@ -288,50 +340,69 @@ def generar_reporte_usuarios(path_pdf):
     c.setFont("Helvetica-Bold", 11)
     c.drawString(2 * cm, y, f"Total de usuarios con tickets: {len(data)}")
     y -= 25
+    
+    # Encabezado de la tabla
+    c.setFont("Helvetica-Bold", 9)
+    c.setFillColor(colors.HexColor("#1f3c88"))
+    c.drawString(2 * cm, y, "Usuario")
+    c.drawString(6 * cm, y, "Departamento")
+    c.drawString(10 * cm, y, "Creados")
+    c.drawString(12 * cm, y, "Asignados")
+    c.drawString(14 * cm, y, "Total")
+    y -= 15
+    
+    c.setStrokeColor(colors.gray)
+    c.setLineWidth(0.5)
+    c.line(2 * cm, y, 16 * cm, y)
+    y -= 10
 
     for bloque in data:
-        usuario = bloque["usuario"]
-        tickets = bloque["tickets"]
-        total_tickets = bloque["total"]
+        usuario = bloque["usuario"]  # Esto ahora es un objeto Usuario
+        total_creados = bloque["total_creados"]
+        total_asignados = bloque["total_asignados"]
+        total_general = bloque["total_general"]
 
         if y < 120:
             c.showPage()
             encabezado_pdf(c, "Reporte de Tickets por Usuario - Detalle")
             y = A4[1] - 110
+            
+            # Redibujar encabezado de tabla
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(colors.HexColor("#1f3c88"))
+            c.drawString(2 * cm, y, "Usuario")
+            c.drawString(6 * cm, y, "Departamento")
+            c.drawString(10 * cm, y, "Creados")
+            c.drawString(12 * cm, y, "Asignados")
+            c.drawString(14 * cm, y, "Total")
+            y -= 15
+            c.line(2 * cm, y, 16 * cm, y)
+            y -= 10
 
-        c.setFont("Helvetica-Bold", 12)
-        c.setFillColor(colors.HexColor("#1f3c88"))
-        c.drawString(2 * cm, y, f"Usuario: {usuario.name}")
-        y -= 12
-
+        # Acceder a los atributos del objeto Usuario
         depto = usuario.departamento.depth_name if usuario.departamento else "Sin departamento"
+        
         c.setFont("Helvetica", 9)
         c.setFillColor(colors.black)
-        c.drawString(2 * cm, y, f"Departamento: {depto} | Total tickets: {total_tickets}")
-        y -= 18
-
-        for i, ticket in enumerate(tickets, 1):
-            if y < 80:
-                c.showPage()
-                encabezado_pdf(c, "Reporte de Tickets por Usuario - Detalle")
-                y = A4[1] - 110
-
-            if ticket.estado == 'Cerrado':
-                c.setFillColor(colors.green)
-            elif ticket.estado == 'Resuelto':
-                c.setFillColor(colors.blue)
-            elif ticket.estado == 'En Progreso':
-                c.setFillColor(colors.orange)
-            else:
-                c.setFillColor(colors.red)
-
-            c.setFont("Helvetica", 8)
-            texto = (f"{i}. #{ticket.ticket_id} | {ticket.name[:50]} | "
-                    f"{ticket.estado} | Prioridad: {ticket.prioridad}")
-            c.drawString(2.5 * cm, y, texto)
-            c.setFillColor(colors.black)
-            y -= 12
-
+        
+        # Usuario
+        c.drawString(2 * cm, y, usuario.name[:20])
+        
+        # Departamento
+        c.drawString(6 * cm, y, depto[:15])
+        
+        # Tickets creados (azul)
+        c.setFillColor(colors.HexColor("#1f3c88"))
+        c.drawString(10 * cm, y, str(total_creados))
+        
+        # Tickets asignados (verde)
+        c.setFillColor(colors.HexColor("#10b981"))
+        c.drawString(12 * cm, y, str(total_asignados))
+        
+        # Total (púrpura)
+        c.setFillColor(colors.HexColor("#8b5cf6"))
+        c.drawString(14 * cm, y, str(total_general))
+        
         y -= 15
 
     pie_pdf(c)
